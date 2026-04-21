@@ -1,0 +1,22 @@
+{
+  "name": "kaf-ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RSS ingest + translation worker for the kaf-rss-reader Supabase backend.",
+  "scripts": {
+    "fetch": "tsx scripts/fetch.ts",
+    "translate": "tsx scripts/translate.ts",
+    "ingest": "npm run fetch && npm run translate"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.49.0",
+    "dotenv": "^16.4.5",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

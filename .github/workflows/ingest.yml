@@ -1,0 +1,43 @@
+name: Ingest
+
+on:
+  # Hourly cron. Worker volume is light (≤2 new tweets/hr typical), so this
+  # comfortably keeps up while staying well within GitHub Actions free tier
+  # (24 runs/day × ~30 s/run ≈ 360 min/month vs 2000 min/month free).
+  schedule:
+    - cron: "0 * * * *"
+  # Manual trigger for testing without waiting for the next hour.
+  workflow_dispatch:
+
+# Cancel in-flight runs if a new one starts (e.g. manual + scheduled overlap)
+# so we never have two ingest workers racing on the same Supabase rows.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch RSS sources
+        run: npm run fetch
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Translate untranslated Japanese posts
+        run: npm run translate
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
