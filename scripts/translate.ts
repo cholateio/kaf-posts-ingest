@@ -106,10 +106,49 @@ function shouldSkip(text: string): boolean {
     return false;
 }
 
+/**
+ * Strip the inlined quoted body from quote-tweet input before translation.
+ *
+ * rss.app inlines quoted tweets without any structural delimiter — they
+ * just concatenate <originalText><QuotedDisplayName> (@<quotedHandle>)
+ * <quotedBody>—  https://x.com/<quotedHandle>/status/<id>. The trailing
+ * `/status/` URL is unique to quote tweets (the per-post attribution line
+ * `— Name (@handle) date` has no path), so it doubles as a reliable
+ * detector. RT-style retweets carry no /status/ URL in body and are
+ * intentionally left intact — the user wants those translated in full.
+ *
+ * Only Gemini input is filtered; original_text in the DB stays untouched
+ * so the frontend's existing quote-hide / jump-to-source UI keeps working.
+ */
+function stripQuotedContent(text: string): string {
+    const quoteUrlRe = /—\s+https?:\/\/x\.com\/(\w+)\/status\/\d+/;
+    const match = quoteUrlRe.exec(text);
+    if (!match) return text;
+
+    const handle = match[1];
+    const handleMarker = `(@${handle})`;
+    const handlePos = text.indexOf(handleMarker);
+    if (handlePos === -1) return text;
+
+    // Walk back ≤30 chars to nearest \n or sentence-end glyph to also strip
+    // the display name preceding (@handle); rss.app gives no explicit
+    // delimiter so a bounded heuristic is the best signal we have.
+    let cutPos = handlePos;
+    for (let i = handlePos - 1; i >= 0 && handlePos - i < 30; i--) {
+        const ch = text[i];
+        if (ch === '\n' || /[。！？!?⟡♡♥]/.test(ch)) {
+            cutPos = i + 1;
+            break;
+        }
+    }
+
+    return text.substring(0, cutPos).trimEnd();
+}
+
 async function callGemini(geminiKey: string, text: string): Promise<TranslationResult> {
-    // Strip URLs before sending — they add noise and use up tokens. The greedy
-    // `\S+` boundary is fine here because we control the input shape.
-    const cleanText = text.replace(/https?:\/\/\S+/g, '').trim();
+    // Strip quoted content first (the detector relies on the embedded /status/
+    // URL still being present), then strip remaining URLs to save tokens.
+    const cleanText = stripQuotedContent(text).replace(/https?:\/\/\S+/g, '').trim();
 
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({
