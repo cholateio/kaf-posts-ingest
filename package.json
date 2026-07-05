@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "description": "RSS ingest + translation worker for the kaf-rss-reader Supabase backend.",
+  "packageManager": "pnpm@11.5.0",
   "scripts": {
     "fetch": "tsx scripts/fetch.ts",
     "translate": "tsx scripts/translate.ts",
-    "ingest": "npm run fetch && npm run translate"
+    "ingest": "pnpm run fetch && pnpm run translate"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

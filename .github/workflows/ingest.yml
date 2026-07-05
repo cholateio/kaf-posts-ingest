@@ -22,21 +22,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # pnpm/action-setup reads the pnpm version from package.json's
+      # "packageManager" field; runs before setup-node so cache: pnpm works.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Fetch RSS sources
-        run: npm run fetch
+        run: pnpm run fetch
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
       - name: Translate untranslated Japanese posts
-        run: npm run translate
+        run: pnpm run translate
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
