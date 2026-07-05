@@ -4,3 +4,7 @@ node_modules
 *.log
 dist
 .DS_Store
+
+# Claude Code / multi-agent kit(本機工具設定,真理源在 kit repo)
+.claude/
+.superpowers/
