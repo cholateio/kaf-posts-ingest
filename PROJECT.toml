@@ -1,0 +1,30 @@
+# PROJECT.toml — 專案 manifest(機器可讀,`proj` 指令據此做跨專案彙總)。
+# user-owned:kit 永不覆蓋。狀態/指令/付費服務改變時同步本檔,並更新 updated。
+
+name = "kaf-posts-ingest"
+status = "active"          # active | mvp | done | paused | abandoned
+status_note = "已上線:GitHub Actions 每小時跑 fetch+translate 皆成功(近 20 次全綠),是 kaf-observatory(前端 Reader,舊名 virtual-desk)唯讀消費的同一 Supabase 後端;下一步視 Gemini/rss.app 用量決定要不要調 MAX_TRANSLATIONS_PER_RUN。"
+updated = 2026-07-11       # 最後一次人工確認本檔內容的日期
+
+[commands]                 # key = 用途短名;value = 可直接複製執行的指令
+ingest = "pnpm run ingest"       # 完整跑一次攝入:fetch 再 translate
+fetch = "pnpm run fetch"         # 只抓 RSS、insert 新貼文
+translate = "pnpm run translate" # 只翻譯未翻譯列(每輪 ≤10)
+
+[[paid]]
+service = "Google Gemini API (gemini-2.5-flash)"
+billing = "按用量"
+monthly_est = "?"
+cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
+
+[[paid]]
+service = "Supabase (KAF_Posts 表)"
+billing = "?"                # 待確認:與 kaf-observatory 共用同一 Supabase 專案,計費可能已在該專案追蹤,不宜重複估算
+monthly_est = "?"
+cancel = "待確認:與 kaf-observatory 共用同一後端,不可單獨停用,需一併評估"
+
+[[paid]]
+service = "rss.app (4 個 X/Twitter feed)"
+billing = "?"                # 待確認:scripts/fetch.ts 註解提到「quota」,暗示方案有用量上限
+monthly_est = "?"
+cancel = "待確認:需登入 rss.app 帳號查看方案並確認能否降級/取消"
