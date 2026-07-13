@@ -3,7 +3,7 @@
 
 name = "kaf-posts-ingest"
 status = "active"          # active | mvp | done | paused | abandoned
-status_note = "已上線:GitHub Actions 每小時跑 fetch+translate 皆成功(近 20 次全綠),是 kaf-observatory(前端 Reader,舊名 virtual-desk)唯讀消費的同一 Supabase 後端;下一步視 Gemini/rss.app 用量決定要不要調 MAX_TRANSLATIONS_PER_RUN。"
+status_note = "已上線,GitHub Actions 每小時 fetch+translate,近 20 次全綠;視 Gemini/rss.app 用量決定要不要調 MAX_TRANSLATIONS_PER_RUN"
 updated = 2026-07-11       # 最後一次人工確認本檔內容的日期
 
 [commands]                 # key = 用途短名;value = 可直接複製執行的指令
@@ -12,19 +12,19 @@ fetch = "pnpm run fetch"         # 只抓 RSS、insert 新貼文
 translate = "pnpm run translate" # 只翻譯未翻譯列(每輪 ≤10)
 
 [[paid]]
-service = "Google Gemini API (gemini-2.5-flash)"
+service = "Google Gemini API"   # gemini-2.5-flash
 billing = "按用量"
 monthly_est = "?"
 cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
 
 [[paid]]
-service = "Supabase (KAF_Posts 表)"
+service = "Supabase"   # KAF_Posts 表
 billing = "free-tier"        # user 2026-07-11 確認未付費;與 kaf-observatory 共用同一專案,勿重複計費
 monthly_est = "$0"
 cancel = "與 kaf-observatory 共用同一後端,不可單獨停用,需一併評估"
 
 [[paid]]
-service = "rss.app (4 個 X/Twitter feed)"
+service = "rss.app"   # 4 個 X/Twitter feed
 billing = "月費"
 monthly_est = "NT$260（feed 不限，user 2026-07-11 確認）"
 cancel = "rss.app 帳號後台取消訂閱;取消後 fetch.ts 的 4 個 feed 全部失效"
