@@ -14,14 +14,15 @@ translate = "pnpm run translate" # 只翻譯未翻譯列(每輪 ≤10)
 [[paid]]
 service = "Google Gemini API"   # gemini-2.5-flash
 billing = "按用量"
-# 2026-07-14 估算,尚未對過帳單:gemini-2.5-flash 有免費層(有每日請求數上限);
-# 付費層 input $0.30 / output $2.50 每 1M token。用量被兩層上限夾住——每輪
-# ≤10 筆(MAX_TRANSLATIONS_PER_RUN)× 實測每天約 10 輪 = 理論天花板 100 req/日,
-# 實際新貼文 ≤2/hr 且非日文會跳過,遠低於此。即使全按付費層、每天 30 筆
-# (~850 in + ~1000 out token,thinkingBudget=0)也只有 US$2-3/月;撞到 100 筆
-# 天花板才 ~US$8/月。金額小到不值得為它調 MAX_TRANSLATIONS_PER_RUN。
-# 真實金額取決於這把 key 所在的 Google Cloud 專案有沒有開帳單——未確認。
-monthly_est = "US$2-3/月(估);量小,可能落在免費層"
+# user 2026-07-14 確認:這把 key 所在的 GCP 專案已開帳單 → 走付費層,免費層
+# 的每日額度不再是保護傘,每一次請求都真的計費。
+# 估算(2026-07-14,尚未對過真實帳單):付費層 input $0.30 / output $2.50 每 1M
+# token。用量被兩層上限夾住——每輪 ≤10 筆(MAX_TRANSLATIONS_PER_RUN)× 實測每天
+# 約 10 輪 = 理論天花板 100 req/日,實際新貼文 ≤2/hr 且非日文會跳過,遠低於此。
+# 每天 30 筆(~850 in + ~1000 out token,thinkingBudget=0)≈ US$2-3/月;即使天天
+# 撞到 100 筆天花板也只 ~US$8/月。MAX_TRANSLATIONS_PER_RUN 就是計費的熔斷器:
+# 只要它維持 10,帳單有硬上限;調高它等於直接調高帳單上限。
+monthly_est = "US$2-3/月(估,未對帳單)"
 cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
 
 [[paid]]
