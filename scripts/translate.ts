@@ -12,7 +12,7 @@
  * deploy, ingest paused, etc.) the worker crawls through them at this rate
  * rather than blasting Gemini with a single huge spike.
  *
- * Usage:  npm run translate    (or: tsx scripts/translate.ts)
+ * Usage:  pnpm run translate    (or: tsx scripts/translate.ts)
  * Env:    SUPABASE_URL, SUPABASE_SERVICE_KEY, GEMINI_API_KEY
  */
 

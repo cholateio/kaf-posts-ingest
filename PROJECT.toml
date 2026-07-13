@@ -2,9 +2,9 @@
 # user-owned:kit 永不覆蓋。狀態/指令/付費服務改變時同步本檔,並更新 updated。
 
 name = "kaf-posts-ingest"
-status = "active"          # active | mvp | done | paused | abandoned
-status_note = "已上線,GitHub Actions 每小時 fetch+translate,近 20 次全綠;視 Gemini/rss.app 用量決定要不要調 MAX_TRANSLATIONS_PER_RUN"
-updated = 2026-07-11       # 最後一次人工確認本檔內容的日期
+status = "done"            # active | mvp | done | paused | abandoned
+status_note = "已上線穩定運行,Actions cron 跑 fetch+translate,近 100 次全綠;無計畫中的工作,rss.app feed 失效或 Gemini 帳單異常時再回來"
+updated = 2026-07-14       # 最後一次人工確認本檔內容的日期
 
 [commands]                 # key = 用途短名;value = 可直接複製執行的指令
 ingest = "pnpm run ingest"       # 完整跑一次攝入:fetch 再 translate
@@ -14,7 +14,14 @@ translate = "pnpm run translate" # 只翻譯未翻譯列(每輪 ≤10)
 [[paid]]
 service = "Google Gemini API"   # gemini-2.5-flash
 billing = "按用量"
-monthly_est = "?"
+# 2026-07-14 估算,尚未對過帳單:gemini-2.5-flash 有免費層(有每日請求數上限);
+# 付費層 input $0.30 / output $2.50 每 1M token。用量被兩層上限夾住——每輪
+# ≤10 筆(MAX_TRANSLATIONS_PER_RUN)× 實測每天約 10 輪 = 理論天花板 100 req/日,
+# 實際新貼文 ≤2/hr 且非日文會跳過,遠低於此。即使全按付費層、每天 30 筆
+# (~850 in + ~1000 out token,thinkingBudget=0)也只有 US$2-3/月;撞到 100 筆
+# 天花板才 ~US$8/月。金額小到不值得為它調 MAX_TRANSLATIONS_PER_RUN。
+# 真實金額取決於這把 key 所在的 Google Cloud 專案有沒有開帳單——未確認。
+monthly_est = "US$2-3/月(估);量小,可能落在免費層"
 cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
 
 [[paid]]
@@ -26,5 +33,7 @@ cancel = "與 kaf-observatory 共用同一後端,不可單獨停用,需一併評
 [[paid]]
 service = "rss.app"   # 4 個 X/Twitter feed
 billing = "月費"
-monthly_est = "NT$260（feed 不限，user 2026-07-11 確認）"
+# user 2026-07-11 確認;方案 feed 數不限。這是本專案唯一真正的固定支出——
+# 停掉 = fetch.ts 的 4 個 feed 一起失效,無備援來源。
+monthly_est = "NT$260/月"
 cancel = "rss.app 帳號後台取消訂閱;取消後 fetch.ts 的 4 個 feed 全部失效"

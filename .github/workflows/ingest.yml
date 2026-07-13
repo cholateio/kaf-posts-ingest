@@ -1,9 +1,13 @@
 name: Ingest
 
 on:
-  # Hourly cron. Worker volume is light (≤2 new tweets/hr typical), so this
-  # comfortably keeps up while staying well within GitHub Actions free tier
-  # (24 runs/day × ~30 s/run ≈ 360 min/month vs 2000 min/month free).
+  # Asks for hourly, but GitHub schedules are best-effort and get dropped under
+  # load: measured 2026-07-04..07-13 this fired 7-16×/day, never 24. Worker
+  # volume is light (≤2 new tweets/hr typical) so it still keeps up. Actions
+  # minutes are not a constraint here — this repo is public, and public repos
+  # get unmetered Actions on standard runners. If punctuality ever matters,
+  # drive workflow_dispatch from an external cron instead of tightening this
+  # schedule — GitHub drops tightened schedules too.
   schedule:
     - cron: "0 * * * *"
   # Manual trigger for testing without waiting for the next hour.

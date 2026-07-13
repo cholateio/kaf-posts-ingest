@@ -15,9 +15,12 @@ RSS feed，寫入 Supabase `KAF_Posts` 表，再用 Gemini 翻譯未翻譯的貼
 - Language: TypeScript 5.8 / Node 22（tsx 直跑 .ts，無編譯步驟，`noEmit: true`）
 - 外部服務: Supabase（`@supabase/supabase-js`）、Google Gemini
   `gemini-2.5-flash`（`@google/generative-ai`）、rss.app（feed 供應方）
-- 部署: GitHub Actions cron（`.github/workflows/ingest.yml`，每小時
-  `0 * * * *` + workflow_dispatch 手動觸發）；secrets 走 Actions
-- Build/run: `npm run fetch` / `npm run translate` / `npm run ingest`（= fetch && translate）
+- 部署: GitHub Actions cron（`.github/workflows/ingest.yml`，`0 * * * *`
+  + workflow_dispatch 手動觸發）；secrets 走 Actions。**cron 排的是每小時，
+  GitHub 實際只 best-effort 觸發**——實測 2026-07-04～07-13 每天只跑 7–16 次，
+  從未達 24 次。以目前貼文量（≤2/hr）仍追得上，別把「每小時」當保證
+- 套件管理: pnpm（`packageManager` 欄位鎖 pnpm@11.5.0，CI 用 pnpm/action-setup）
+- Build/run: `pnpm run fetch` / `pnpm run translate` / `pnpm run ingest`（= fetch && translate）
 - Test: 無測試（package.json 無 test script）——改動後以實跑 fetch/translate 觀察輸出驗證
 
 ## File layout

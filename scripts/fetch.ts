@@ -3,7 +3,7 @@
  * Posts.external_id, inserts the new entries. Translation is left for the
  * companion `translate.ts` step.
  *
- * Usage:  npm run fetch    (or: tsx scripts/fetch.ts)
+ * Usage:  pnpm run fetch    (or: tsx scripts/fetch.ts)
  * Env:    SUPABASE_URL, SUPABASE_SERVICE_KEY
  */
 
