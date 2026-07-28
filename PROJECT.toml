@@ -3,7 +3,7 @@
 
 name = "kaf-posts-ingest"
 status = "done"            # active | mvp | done | paused | abandoned
-status_note = "翻譯已修復並改為官方優先,DB 依 user 要求全表重置;觀察 Actions 是否穩定產出翻譯"
+status_note = "翻譯已修復,加官方優先與 feed 相關性閘,成本已 log 化;無計畫中工作,feed 失效或帳單異常再回來"
 updated = 2026-07-28       # 最後一次人工確認本檔內容的日期
 
 [commands]                 # key = 用途短名;value = 可直接複製執行的指令
