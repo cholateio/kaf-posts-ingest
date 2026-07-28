@@ -33,6 +33,10 @@ const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 // the fan feed, which outproduces them ~25:1.
 const FEED_PRIORITY = ['official', 'kafu', 'fan'] as const;
 
+// Paid-tier USD per 1M tokens for GEMINI_MODEL — update both together.
+const PRICE_PER_M_INPUT = 0.3;
+const PRICE_PER_M_OUTPUT = 2.5;
+
 const MAX_TRANSLATIONS_PER_RUN = 10;
 const MIN_TEXT_LENGTH = 4;
 const GEMINI_TIMEOUT_MS = 30_000;
@@ -155,7 +159,12 @@ function stripQuotedContent(text: string): string {
     return text.substring(0, cutPos).trimEnd();
 }
 
-async function callGemini(geminiKey: string, text: string): Promise<TranslationResult> {
+interface TokenUsage {
+    input: number;
+    output: number;
+}
+
+async function callGemini(geminiKey: string, text: string, usage: TokenUsage): Promise<TranslationResult> {
     // Strip quoted content first (the detector relies on the embedded /status/
     // URL still being present), then strip remaining URLs to save tokens.
     const cleanText = stripQuotedContent(text).replace(/https?:\/\/\S+/g, '').trim();
@@ -182,6 +191,9 @@ async function callGemini(geminiKey: string, text: string): Promise<TranslationR
             { contents: [{ role: 'user', parts: [{ text: cleanText }] }] },
             { signal: controller.signal },
         );
+        const meta = response.response.usageMetadata;
+        usage.input += meta?.promptTokenCount ?? 0;
+        usage.output += meta?.candidatesTokenCount ?? 0;
         const raw = response.response.text();
         return JSON.parse(raw) as TranslationResult;
     } finally {
@@ -243,9 +255,10 @@ async function main() {
     );
 
     let okCount = 0;
+    const usage: TokenUsage = { input: 0, output: 0 };
     for (const post of queue) {
         try {
-            const result = await callGemini(geminiKey, post.original_text);
+            const result = await callGemini(geminiKey, post.original_text, usage);
             const { error: updErr } = await db
                 .from('KAF_Posts')
                 .update({
@@ -270,7 +283,11 @@ async function main() {
         }
     }
 
-    console.log(`\nDone. Translated ${okCount}/${queue.length}.`);
+    const cost = (usage.input / 1e6) * PRICE_PER_M_INPUT + (usage.output / 1e6) * PRICE_PER_M_OUTPUT;
+    console.log(
+        `\nDone. Translated ${okCount}/${queue.length}. ` +
+            `Tokens: ${usage.input} in / ${usage.output} out ≈ US$${cost.toFixed(4)}`,
+    );
 }
 
 main();
