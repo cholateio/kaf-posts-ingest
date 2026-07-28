@@ -3,8 +3,8 @@
 
 name = "kaf-posts-ingest"
 status = "done"            # active | mvp | done | paused | abandoned
-status_note = "已上線穩定運行,Actions cron 跑 fetch+translate,近 100 次全綠;無計畫中的工作,rss.app feed 失效或 Gemini 帳單異常時再回來"
-updated = 2026-07-14       # 最後一次人工確認本檔內容的日期
+status_note = "翻譯已修復並改為官方優先,DB 依 user 要求全表重置;觀察 Actions 是否穩定產出翻譯"
+updated = 2026-07-28       # 最後一次人工確認本檔內容的日期
 
 [commands]                 # key = 用途短名;value = 可直接複製執行的指令
 ingest = "pnpm run ingest"       # 完整跑一次攝入:fetch 再 translate
@@ -12,12 +12,13 @@ fetch = "pnpm run fetch"         # 只抓 RSS、insert 新貼文
 translate = "pnpm run translate" # 只翻譯未翻譯列(每輪 ≤10)
 
 [[paid]]
-service = "Google Gemini API"   # gemini-2.5-flash
+service = "Google Gemini API"   # gemini-3.5-flash-lite
 billing = "按用量"
 # user 2026-07-14 確認:這把 key 所在的 GCP 專案已開帳單 → 走付費層,免費層
 # 的每日額度不再是保護傘,每一次請求都真的計費。
-# 估算(2026-07-14,尚未對過真實帳單):付費層 input $0.30 / output $2.50 每 1M
-# token。用量被兩層上限夾住——每輪 ≤10 筆(MAX_TRANSLATIONS_PER_RUN)× 實測每天
+# 估算(2026-07-14,尚未對過真實帳單):以舊 gemini-2.5-flash 的 input $0.30 /
+# output $2.50 每 1M token 計,現行 flash-lite 更便宜,故此數是上限。
+# 用量被兩層上限夾住——每輪 ≤10 筆(MAX_TRANSLATIONS_PER_RUN)× 實測每天
 # 約 10 輪 = 理論天花板 100 req/日,實際新貼文 ≤2/hr 且非日文會跳過,遠低於此。
 # 每天 30 筆(~850 in + ~1000 out token,thinkingBudget=0)≈ US$2-3/月;即使天天
 # 撞到 100 筆天花板也只 ~US$8/月。MAX_TRANSLATIONS_PER_RUN 就是計費的熔斷器:

@@ -8,3 +8,6 @@ dist
 # Claude Code / multi-agent kit(本機工具設定,真理源在 kit repo)
 .claude/settings.local.json
 .superpowers/
+
+# WSL: Windows 複製檔案時帶出的 alternate data stream
+*:Zone.Identifier

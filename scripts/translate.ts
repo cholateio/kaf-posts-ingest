@@ -23,6 +23,16 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 
+// gemini-2.5-flash returned 404 "no longer available to new users" from
+// 2026-07-15 onward, silently zeroing every run for 12 days. Pin the cheapest
+// current tier and treat a 404 here as a model-retirement signal, not a key
+// problem.
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+
+// Drain order for the translation queue: official posts must never wait behind
+// the fan feed, which outproduces them ~25:1.
+const FEED_PRIORITY = ['official', 'kafu', 'fan'] as const;
+
 const MAX_TRANSLATIONS_PER_RUN = 10;
 const MIN_TEXT_LENGTH = 4;
 const GEMINI_TIMEOUT_MS = 30_000;
@@ -152,13 +162,15 @@ async function callGemini(geminiKey: string, text: string): Promise<TranslationR
 
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: GEMINI_MODEL,
         generationConfig: {
             responseMimeType: 'application/json',
             responseSchema,
-            // Disable thinking budget — these translations are short, deterministic
-            // tasks; reasoning tokens just waste latency and cost.
-            ...({ thinkingConfig: { thinkingBudget: 0 } } as Record<string, unknown>),
+            // Gemini 3.x replaced thinkingConfig.thinkingBudget with
+            // thinkingConfig.thinkingLevel; passing the old field is a hard 400.
+            // 'minimal' is the floor — these translations are short,
+            // deterministic tasks, so reasoning tokens are pure waste.
+            ...({ thinkingConfig: { thinkingLevel: 'minimal' } } as Record<string, unknown>),
         },
         systemInstruction: SYSTEM_PROMPT,
     });
@@ -188,39 +200,47 @@ async function main() {
 
     const db = createClient(url, key);
 
-    // Newest-first so we always cover what users are most likely to look at,
-    // even when there's a backlog. Pull a buffer larger than the cap so the
-    // skip-filter (non-Japanese / too short) doesn't starve the run.
-    const { data: candidates, error } = await db
-        .from('KAF_Posts')
-        .select('id, external_id, original_text')
-        .is('translation', null)
-        .eq('source_type', 'x')
-        .order('published_at', { ascending: false })
-        .limit(MAX_TRANSLATIONS_PER_RUN * 5);
+    // One query per feed_type in priority order, stopping as soon as the cap is
+    // filled — a lower tier only gets slots the tiers above it left unused.
+    // Rows skipped by shouldSkip stay translation IS NULL forever, so each tier
+    // pulls a buffer larger than the cap to keep that residue from starving it.
+    const queue: PostRow[] = [];
+    const queuedBy: string[] = [];
 
-    if (error) {
-        console.error('Query failed:', error.message);
-        process.exit(1);
+    for (const feedType of FEED_PRIORITY) {
+        if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
+
+        const { data: candidates, error } = await db
+            .from('KAF_Posts')
+            .select('id, external_id, original_text')
+            .is('translation', null)
+            .eq('source_type', 'x')
+            .eq('feed_type', feedType)
+            .order('published_at', { ascending: false })
+            .limit(MAX_TRANSLATIONS_PER_RUN * 5);
+
+        if (error) {
+            console.error(`Query failed (${feedType}):`, error.message);
+            process.exit(1);
+        }
+
+        const before = queue.length;
+        for (const post of (candidates ?? []) as PostRow[]) {
+            if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
+            if (shouldSkip(post.original_text)) continue;
+            queue.push(post);
+        }
+        if (queue.length > before) queuedBy.push(`${feedType}:${queue.length - before}`);
     }
-    if (!candidates || candidates.length === 0) {
+
+    if (queue.length === 0) {
         console.log('Nothing to translate.');
         return;
     }
 
-    const queue: PostRow[] = [];
-    for (const post of candidates as PostRow[]) {
-        if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
-        if (shouldSkip(post.original_text)) continue;
-        queue.push(post);
-    }
-
-    if (queue.length === 0) {
-        console.log(`No translatable posts in top ${candidates.length} candidates.`);
-        return;
-    }
-
-    console.log(`Translating ${queue.length} posts (capped at ${MAX_TRANSLATIONS_PER_RUN})...`);
+    console.log(
+        `Translating ${queue.length} posts (capped at ${MAX_TRANSLATIONS_PER_RUN}) — ${queuedBy.join(', ')}`,
+    );
 
     let okCount = 0;
     for (const post of queue) {
