@@ -23,15 +23,43 @@ const parser = new Parser<Record<string, never>, { 'media:content': MediaContent
     },
 });
 
+interface Source {
+    name: string;
+    feedType: 'official' | 'fan' | 'kafu';
+    rssUrl: string;
+    /**
+     * Relevance gate for search-backed feeds only.
+     *
+     * The fan and kafu feeds are rss.app wrappers around `x.com/search?q=花譜`
+     * and `x.com/search?q=可不 kafu`. X returns loosely related results — CJK
+     * queries get token-split (`板倉可奈　永久不滅` matches 可+不; `瀧廉太郎の
+     * 「花」の自筆譜` matches 花+譜) and the Top tab expands further. Measured
+     * against 5784 archived rows: 10% of fan and 9% of kafu entries mention no
+     * form of the subject at all, with zero legitimate posts caught by these
+     * patterns. Account timelines need no gate.
+     */
+    mustMatch?: RegExp;
+}
+
 // All sources are X (Twitter) feeds. The previous YT source was dropped when
 // the frontend removed YouTube content — keeping the call here would just
 // burn rss.app quota for rows nothing renders.
-const SOURCES = [
+const SOURCES: Source[] = [
     { name: 'KAF Official', feedType: 'official', rssUrl: 'https://rss.app/feeds/TrZl0i4ipQm1dz7k.xml' },
     { name: 'KAF Info', feedType: 'official', rssUrl: 'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml' },
-    { name: 'KAF Fan #KAF', feedType: 'fan', rssUrl: 'https://rss.app/feeds/sobCJ2ZL60gmrRKt.xml' },
-    { name: 'KAFU #KAFU', feedType: 'kafu', rssUrl: 'https://rss.app/feeds/O6oRYJpoK0nmmzSm.xml' },
-] as const;
+    {
+        name: 'KAF Fan #KAF',
+        feedType: 'fan',
+        rssUrl: 'https://rss.app/feeds/sobCJ2ZL60gmrRKt.xml',
+        mustMatch: /花譜|kaf|カフ|可不/i,
+    },
+    {
+        name: 'KAFU #KAFU',
+        feedType: 'kafu',
+        rssUrl: 'https://rss.app/feeds/O6oRYJpoK0nmmzSm.xml',
+        mustMatch: /可不|kafu/i,
+    },
+];
 
 interface RssEntry {
     externalId: string;
@@ -106,14 +134,26 @@ async function main() {
                 continue;
             }
 
-            const externalIds = entries.map((e) => e.externalId);
+            const relevant = source.mustMatch
+                ? entries.filter((e) => source.mustMatch!.test(e.text))
+                : entries;
+            const droppedCount = entries.length - relevant.length;
+            if (droppedCount > 0) {
+                console.log(`  ${source.name}: dropped ${droppedCount} off-topic entries`);
+            }
+            if (relevant.length === 0) {
+                console.log(`  ${source.name}: 0 relevant entries in feed`);
+                continue;
+            }
+
+            const externalIds = relevant.map((e) => e.externalId);
             const { data: existing } = await db.from('KAF_Posts').select('external_id').in('external_id', externalIds);
 
             const existingIds = new Set((existing ?? []).map((p: { external_id: string }) => p.external_id));
-            const newEntries = entries.filter((e) => !existingIds.has(e.externalId));
+            const newEntries = relevant.filter((e) => !existingIds.has(e.externalId));
 
             if (newEntries.length === 0) {
-                console.log(`  ${source.name}: 0 new (${entries.length} already exist)`);
+                console.log(`  ${source.name}: 0 new (${relevant.length} already exist)`);
                 continue;
             }
 

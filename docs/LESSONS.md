@@ -1,5 +1,16 @@
 # LESSONS
 
+### 2026-07-28 rss.app 的 X 搜尋型 feed 有一成內容跟主題無關
+- Context: user 發現 KAFU feed 混入大量非可不內容。四個 feed 中兩個是帳號
+  timeline(乾淨),兩個是 `x.com/search?q=花譜` 與 `x.com/search?q=可不 kafu`。
+- Error: 搜尋型 feed 撈回的貼文有一成內文完全不含主題詞。X 對 CJK 查詢會拆字
+  (`板倉可奈　永久不滅` 命中 可+不、`瀧廉太郎の「花」の自筆譜` 命中 花+譜),
+  Top 分頁還會再做關聯擴展;也會命中帳號名(`@MatsuriCafu` → Cafu)。
+- Solution: `fetch.ts` 的 SOURCES 加 `mustMatch` 正則,只對搜尋型 feed 生效,
+  insert 前擋掉。規則先拿備份的 5784 筆歷史資料量測命中率與誤殺率才上線。
+- Rule: 第三方 feed 的「搜尋」不是精確匹配——接進 DB 前先拿歷史樣本量測雜訊率,
+  過濾規則要同時驗誤殺(被丟掉的逐筆看過)而不只是驗濾掉多少。
+
 ### 2026-07-28 綠燈的 CI 掩護了 12 天的翻譯全滅
 - Context: user 回報「翻譯很久沒動了」。Actions 最近 100 次 run 全 success,
   PROJECT.toml 也寫著「近 100 次全綠」,表面上專案健康。
