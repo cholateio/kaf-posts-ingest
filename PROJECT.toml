@@ -16,13 +16,13 @@ service = "Google Gemini API"   # gemini-3.5-flash-lite
 billing = "按用量"
 # user 2026-07-14 確認:這把 key 所在的 GCP 專案已開帳單 → 走付費層,免費層
 # 的每日額度不再是保護傘,每一次請求都真的計費。
-# 2026-07-28 實測(translate.ts 每輪印 usageMetadata):12 筆樣本平均每筆
-# 588 in / 465 out token,單價 input $0.30 / output $2.50 每 1M → US$0.00134/筆。
-# 需求面實測(備份 79 天資料,已套相關性閘):平均 67 筆/天 → US$2.7/月。
-# 產能天花板 10 筆/輪 × 約 12 輪/天 = 120 筆/天 → US$4.9/月,這是帳單硬上限。
-# MAX_TRANSLATIONS_PER_RUN 就是計費的熔斷器:調高它等於直接調高帳單上限。
-# 尚未與 Google 真實帳單對過帳。
-monthly_est = "US$2.7/月(實測 token 換算)"
+# 2026-07-28:translate.ts 每輪印 usageMetadata,單價 input $0.30 /
+# output $2.50 每 1M token。兩種算法——直接量測 12 筆得 US$2.7/月;拿 3855 筆
+# 歷史翻譯的字數分布校準後得 US$3.6/月(短貼文樣本偏多所以前者偏低)。
+# 需求面 67 筆/天(備份 79 天資料,已套相關性閘)。產能上限 120 筆/天 → US$6.5/月,
+# 這是帳單硬上限;MAX_TRANSLATIONS_PER_RUN 就是熔斷器,調高它等於調高上限。
+# log 已會印每輪實際金額,累積幾天後可直接加總取代上面的推估。尚未對過真實帳單。
+monthly_est = "US$3-4/月(實測校準,未對帳單)"
 cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
 
 [[paid]]

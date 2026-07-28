@@ -191,9 +191,16 @@ async function callGemini(geminiKey: string, text: string, usage: TokenUsage): P
             { contents: [{ role: 'user', parts: [{ text: cleanText }] }] },
             { signal: controller.signal },
         );
+        // thoughtsTokenCount bills at the output rate but is excluded from
+        // candidatesTokenCount, and thinkingLevel 'minimal' does not guarantee
+        // zero. Derive billed output from the total instead, so any category
+        // the API adds later is still counted; fall back to candidates alone if
+        // totalTokenCount is absent.
         const meta = response.response.usageMetadata;
-        usage.input += meta?.promptTokenCount ?? 0;
-        usage.output += meta?.candidatesTokenCount ?? 0;
+        const prompt = meta?.promptTokenCount ?? 0;
+        const candidates = meta?.candidatesTokenCount ?? 0;
+        usage.input += prompt;
+        usage.output += Math.max((meta?.totalTokenCount ?? 0) - prompt, candidates);
         const raw = response.response.text();
         return JSON.parse(raw) as TranslationResult;
     } finally {
