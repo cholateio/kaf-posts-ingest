@@ -8,8 +8,8 @@
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import { extractVideoIds } from './lib/videoIds';
-import { playlistFeedUrl, videoIdsFromYoutubeFeed } from './lib/rssDiscovery';
+import { fetchPlaylistVideoIds } from './lib/rssDiscovery';
+import { tweetMembersOnlyHints } from './lib/membersOnly';
 import { assembleRows, type Discovery, type StaleRow } from './lib/assembleRows';
 import { fetchVideoItems, type DiscoveredVia } from './lib/youtube';
 
@@ -30,10 +30,6 @@ export const TWEET_FEEDS: string[] = [
     'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml', // @kaf_info
 ];
 
-// Spec verification point 2: the Data API exposes no members-only flag, so
-// the tweet text is the only signal. "MEMBERSHIP" observed verbatim in a
-// members-only stream title (hg7jeGt2Zh4, 2026-10-09).
-const MEMBERS_ONLY_RE = /メンバーシップ限定|メン限|membership|members?[- ]?only/i;
 const STALE_REFRESH_MS = 30 * 60 * 1000;
 const REFRESH_CAP = 50;
 
@@ -60,24 +56,25 @@ async function main() {
         const prev = discovered.get(id);
         discovered.set(id, { via: prev?.via ?? via, membersOnly: (prev?.membersOnly ?? false) || membersOnly });
     };
+    let apiFallbacks = 0;
     for (const cid of STREAM_CHANNEL_IDS) {
         for (const kind of ['live', 'uploads'] as const) {
             try {
-                for (const id of videoIdsFromYoutubeFeed(await getText(playlistFeedUrl(cid, kind)))) {
-                    note(id, kind === 'live' ? 'rss_live' : 'rss_uploads');
-                }
+                const { ids: found, via } = await fetchPlaylistVideoIds(cid, kind, ytKey);
+                if (via === 'api') apiFallbacks++;
+                for (const id of found) note(id, kind === 'live' ? 'rss_live' : 'rss_uploads');
             } catch (err) {
-                console.error(`  rss ${kind} ${cid}: FAILED -`, err);
+                console.error(`  playlist ${kind} ${cid}: FAILED -`, err);
             }
         }
     }
+    if (apiFallbacks) console.log(`  rss blocked for ${apiFallbacks} playlists; used playlistItems.list (${apiFallbacks} quota units)`);
     for (const feed of TWEET_FEEDS) {
         try {
             const xml = await getText(feed);
-            // Split per <item> so a members-only hint only applies to links in the same tweet.
+            // Per <item>: a members-only hint is attributed per link (see membersOnly.ts).
             for (const item of xml.split(/<item>/).slice(1)) {
-                const membersOnly = MEMBERS_ONLY_RE.test(item);
-                for (const id of extractVideoIds(item)) note(id, 'tweet', membersOnly);
+                for (const [id, membersOnly] of tweetMembersOnlyHints(item)) note(id, 'tweet', membersOnly);
             }
         } catch (err) {
             console.error(`  tweet feed ${feed}: FAILED -`, err);

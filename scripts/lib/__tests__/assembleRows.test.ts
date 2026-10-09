@@ -54,4 +54,13 @@ describe('assembleRows', () => {
         expect(rows[0].members_only).toBe(true);
         expect(rows[0].discovered_via).toBe('tweet');
     });
+    it("flags members_only from the video title even without a tweet hint", () => {
+        const it = item("titleonly01");
+        it.snippet.title = "【描くよっ】新しいメンシバッジ【MEMBERSHIP ONLY】";
+        const rows = assembleRows({
+            newIds: ["titleonly01"], discovered: new Map([["titleonly01", { via: "rss_live", membersOnly: false }]]),
+            stale: [], items: new Map([["titleonly01", it]]), allowed: ROSTER, now: NOW,
+        });
+        expect(rows[0].members_only).toBe(true);
+    });
 });

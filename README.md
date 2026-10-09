@@ -119,10 +119,13 @@ any small standing backlog — not a bug.
 `kaf-observatory`'s `/schedule` page. Each run:
 
 1. reads every roster channel's `UULV` (live) and `UULF` (long-form uploads)
-   RSS playlists — keyless, no quota;
+   playlists — RSS first (keyless), falling back to `playlistItems.list`
+   (1 quota unit) because GitHub runners get 404/500 from the RSS endpoints
+   (observed 2026-10-09, IP-based);
 2. scans the `TWEET_FEEDS` rss.app feeds for YouTube links (`extractVideoIds`,
-   full 11-char ids only) and tags a tweet mentioning メンバーシップ限定 /
-   メン限 / membership as `members_only` — the Data API has no such flag;
+   full 11-char ids only); `members_only` comes from the text following each
+   link (メンバーシップ限定 / メン限 / membership) or from the video title —
+   the Data API has no such flag;
 3. looks up new ids plus stale `upcoming`/`live` rows (≤50, older than 30 min)
    with one `videos.list` call per 50 ids (1 quota unit each);
 4. upserts on `video_id`. Nothing is written to `kaf_posts`.

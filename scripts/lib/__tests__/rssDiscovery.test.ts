@@ -18,3 +18,19 @@ describe('rssDiscovery', () => {
         expect(videoIdsFromYoutubeFeed('<html>404</html>')).toEqual([]);
     });
 });
+
+describe('playlistItemsVideoIds', () => {
+    it('reads videoIds out of a playlistItems.list payload, deduped', async () => {
+        const { playlistItemsVideoIds } = await import('../rssDiscovery');
+        const body = { items: [
+            { contentDetails: { videoId: 'UuOR80TUvFs' } },
+            { contentDetails: { videoId: 'QIRRaMyVqYg' } },
+            { contentDetails: { videoId: 'UuOR80TUvFs' } },
+        ] };
+        expect(playlistItemsVideoIds(body)).toEqual(['UuOR80TUvFs', 'QIRRaMyVqYg']);
+    });
+    it('returns [] for a payload without items', async () => {
+        const { playlistItemsVideoIds } = await import('../rssDiscovery');
+        expect(playlistItemsVideoIds({})).toEqual([]);
+    });
+});

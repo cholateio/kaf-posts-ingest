@@ -1,3 +1,4 @@
+import { MEMBERS_ONLY_RE } from './membersOnly';
 import { toStreamRow, unavailableRow, type DiscoveredVia, type StreamRow, type YtVideoItem } from './youtube';
 
 export interface Discovery {
@@ -27,7 +28,8 @@ export function assembleRows({ newIds, discovered, stale, items, allowed, now }:
         if (!item) continue;
         if (!allowed.has(item.snippet.channelId)) continue; // guest appearance on a non-roster channel: v2
         const d = discovered.get(id);
-        rows.push(toStreamRow(item, d?.via ?? 'rss_uploads', d?.membersOnly ?? false, now));
+        const membersOnly = (d?.membersOnly ?? false) || MEMBERS_ONLY_RE.test(item.snippet.title);
+        rows.push(toStreamRow(item, d?.via ?? 'rss_uploads', membersOnly, now));
     }
     for (const r of stale) {
         const item = items.get(r.video_id);
