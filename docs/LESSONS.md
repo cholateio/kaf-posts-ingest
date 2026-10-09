@@ -32,3 +32,14 @@
   JSONL(5995 行,校對行數/不重複 id/已翻譯數三項才算過)。
 - Rule: 對唯讀外部來源建立的資料表,刪除前先量測來源能回補多少——上游是滾動
   視窗時,DB 是唯一的歷史副本。
+
+### 2026-10-09 GitHub 排程被 60 天停用,且停用會連帶擋掉 workflow_dispatch
+- Context: Reader 8 天沒新貼文;ingest.yml 用 GitHub `schedule:` 每小時跑。
+- Error: workflows state=`disabled_inactivity`(10/1 起)。重新 enable 後 13 小時內
+  0 次排程觸發(對照 life-tracker 同期每次晚 3–7 小時)。實測 disabled 時
+  dispatch API 回 `422 Cannot trigger a 'workflow_dispatch' on a disabled workflow`。
+  fan feed 10/2–10/7 貼文永久遺失(rss.app 只掛 25 筆)。
+- Solution: 移除 `schedule:`,改由 GCP Cloud Scheduler(kaf-obs)每小時用 fine-grained
+  PAT 打 workflow_dispatch API。
+- Rule: 需要準時或長期無人看管的排程不要用 GitHub `schedule:`,也不要「留著當備援」——
+  它被停用時會把外部 dispatch 一起拖下水。

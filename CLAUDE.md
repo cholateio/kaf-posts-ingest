@@ -15,10 +15,11 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 - Language: TypeScript 5.8 / Node 22（tsx 直跑 .ts，無編譯步驟，`noEmit: true`）
 - 外部服務: Supabase（`@supabase/supabase-js`）、Google Gemini
   `gemini-2.5-flash`（`@google/generative-ai`）、rss.app（feed 供應方）
-- 部署: GitHub Actions cron（`.github/workflows/ingest.yml`，`0 * * * *`
-  + workflow_dispatch 手動觸發）；secrets 走 Actions。**cron 排的是每小時，
-  GitHub 實際只 best-effort 觸發**——實測 2026-07-04～07-13 每天只跑 7–16 次，
-  從未達 24 次。以目前貼文量（≤2/hr）仍追得上，別把「每小時」當保證
+- 部署: GitHub Actions 執行，**觸發來源是 GCP Cloud Scheduler**（專案 `kaf-obs`，
+  job `kaf-posts-ingest-hourly`，`15 * * * *`，用 fine-grained PAT 打
+  workflow_dispatch API）；secrets 走 Actions。`ingest.yml` 只有
+  `workflow_dispatch`，**不要加回 `schedule:`**——理由見該檔註解與
+  `docs/LESSONS.md` 2026-10-09
 - 套件管理: pnpm（`packageManager` 欄位鎖 pnpm@11.5.0，CI 用 pnpm/action-setup）
 - Build/run: `pnpm run fetch` / `pnpm run translate` / `pnpm run ingest`（= fetch && translate）/ `pnpm run streams`
 - Test: `pnpm test`（vitest，只覆蓋 `scripts/lib/` 純函式）；fetch/translate 仍以實跑觀察輸出驗證
@@ -29,7 +30,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 README「Streams」）
 - `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows`）+ `__tests__/`
-- `.github/workflows/ingest.yml` — 唯一 CI workflow：cron + secrets
+- `.github/workflows/ingest.yml` — 唯一 CI workflow：workflow_dispatch（由 Cloud Scheduler 觸發）+ secrets
 - `.env.example` — 本地開發四把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY / YOUTUBE_API_KEY）
 - `docs/specs/` — spec 入口（目前空）
 

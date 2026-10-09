@@ -1,25 +1,19 @@
 name: Ingest
 
 on:
-  # Asks for hourly, but GitHub schedules are best-effort and get dropped under
-  # load: measured 2026-07-04..07-13 this fired 7-16×/day, never 24. Worker
-  # volume is light (≤2 new tweets/hr typical) so it still keeps up. Actions
-  # minutes are not a constraint here — this repo is public, and public repos
-  # get unmetered Actions on standard runners. If punctuality ever matters,
-  # drive workflow_dispatch from an external cron instead of tightening this
-  # schedule — GitHub drops tightened schedules too.
-  # GitHub also auto-disables this schedule after 60 days without repo
-  # activity (state=disabled_inactivity; happened ~2026-10-01, Reader stale
-  # for 8 days). Re-enable with `gh workflow enable ingest.yml`.
-  schedule:
-    # Minute 17, not 0: GitHub drops the most schedules at the top of the
-    # hour; after the 2026-10-09 re-enable, six consecutive :00 slots never fired.
-    - cron: "17 * * * *"
-  # Manual trigger for testing without waiting for the next hour.
+  # Only trigger: GCP Cloud Scheduler job `kaf-posts-ingest-hourly` (project
+  # kaf-obs, asia-east1, `15 * * * *`) POSTs the workflow_dispatch API with a
+  # fine-grained PAT (this repo only, Actions: read/write, no expiration).
+  # Do NOT add `schedule:` back: GitHub ran it best-effort (4-16 runs/day,
+  # never 24) and auto-disables schedule-bearing workflows after 60 days of
+  # repo inactivity — and a disabled workflow rejects workflow_dispatch too,
+  # which would silently kill the Scheduler trigger as well (2026-10-01..09
+  # outage: Reader stale 8 days, fan posts for 10/2-10/7 lost for good since
+  # rss.app keeps only 25 items per feed).
   workflow_dispatch:
 
-# Cancel in-flight runs if a new one starts (e.g. manual + scheduled overlap)
-# so we never have two ingest workers racing on the same Supabase rows.
+# Queue (not cancel) overlapping runs, e.g. a manual run during a Scheduler
+# run, so two ingest workers never race on the same Supabase rows.
 concurrency:
   group: ingest
   cancel-in-progress: false

@@ -1,7 +1,7 @@
 # kaf-posts-ingest
 
 Headless RSS + translation worker for the `kaf-observatory` Supabase backend.
-Runs on a GitHub Actions cron, fetches the configured X (Twitter) RSS feeds,
+Runs on GitHub Actions, triggered hourly by a GCP Cloud Scheduler job; fetches the configured X (Twitter) RSS feeds,
 inserts new posts, then runs `gemini-3.5-flash-lite` on the untranslated ones
 and writes the translations back to the same `kaf_posts` row.
 
@@ -80,28 +80,40 @@ pnpm run ingest            # both, in order
     - `GEMINI_API_KEY` (recommend a separate Google AI Studio key from
       other projects so it can be revoked independently)
 3. Actions tab → "Ingest" workflow → **Run workflow** to verify before
-   relying on the cron.
+   relying on the trigger.
 
-### Actual cron cadence
+### Trigger
 
-The schedule asks for hourly, but GitHub runs scheduled workflows on a
-best-effort basis and silently drops them under load. Measured over
-2026-07-04..07-13 the workflow actually fired **7-16 times a day, never 24**.
-Do not treat "hourly" as a guarantee; an external cron hitting
-`workflow_dispatch` is the fix if punctuality ever matters.
+The workflow has no `schedule:` trigger. GCP Cloud Scheduler (project
+`kaf-obs`, job `kaf-posts-ingest-hourly`, `15 * * * *`) POSTs
+`/repos/cholateio/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches`
+with body `{"ref":"main"}` and a fine-grained PAT (this repo only,
+Actions: read/write) in the `Authorization` header.
+
+Why not GitHub's own cron: it fired best-effort (7-16 runs/day in July,
+4-6 by late September, never 24), and GitHub auto-disables
+schedule-bearing workflows after 60 days without a push. A disabled
+workflow also rejects `workflow_dispatch` (HTTP 422), so keeping
+`schedule:` "as a backup" would eventually take the Scheduler trigger
+down with it. That happened 2026-10-01..09.
+
+If runs stop: check the Scheduler job's status in the GCP console first
+(401 = PAT revoked or wrong, 422 = workflow disabled), then
+`gh api repos/cholateio/kaf-posts-ingest/actions/workflows --jq '.workflows[].state'`.
 
 Throughput math, measured over 79 days of archived rows (post-gate):
 **67 translatable posts/day on average, single-day peak 148**, against a
-capacity of 10 per run × ~12 runs/day = **120/day**. Average demand fits;
-peak days overflow and drain over the following days. That is the origin of
-any small standing backlog — not a bug.
+capacity of 10 per run × 24 runs/day = **240/day** (was ~120/day under
+GitHub's cron). Average demand fits with room; a peak day drains within the
+same day.
 
 ## Tuning knobs
 
 - `scripts/translate.ts` → `MAX_TRANSLATIONS_PER_RUN` (default `10`) —
-  the per-run hard cap, and the billing circuit-breaker. At the default it
-  ceils the Gemini bill at ~US$6.5/month; raising it raises that ceiling
-  proportionally.
+  the per-run hard cap, and the billing circuit-breaker. At the default and
+  24 runs/day it ceils the Gemini bill at ~US$13/month; raising it (or the
+  Scheduler frequency) raises that ceiling proportionally. Actual spend
+  tracks post volume, not the ceiling.
 - `scripts/translate.ts` → `GEMINI_MODEL` plus `PRICE_PER_M_INPUT` /
   `PRICE_PER_M_OUTPUT` — change together, or the logged cost silently lies.
   A `404 no longer available` from this model means Google retired it, not
@@ -110,8 +122,8 @@ any small standing backlog — not a bug.
 - `scripts/fetch.ts` → `SOURCES` array — add or remove RSS feeds here.
   All current sources are X feeds via rss.app. Anything search-backed needs
   a `mustMatch` regex; account timelines do not.
-- `.github/workflows/ingest.yml` → `cron` schedule. Set to hourly; see
-  "Actual cron cadence" above for what GitHub really delivers.
+- Run frequency → the Cloud Scheduler job's cron in GCP (`kaf-obs`), not
+  the workflow file. See "Trigger" above.
 
 ## Streams (live schedule)
 
