@@ -20,15 +20,17 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
   GitHub 實際只 best-effort 觸發**——實測 2026-07-04～07-13 每天只跑 7–16 次，
   從未達 24 次。以目前貼文量（≤2/hr）仍追得上，別把「每小時」當保證
 - 套件管理: pnpm（`packageManager` 欄位鎖 pnpm@11.5.0，CI 用 pnpm/action-setup）
-- Build/run: `pnpm run fetch` / `pnpm run translate` / `pnpm run ingest`（= fetch && translate）
-- Test: 無測試（package.json 無 test script）——改動後以實跑 fetch/translate 觀察輸出驗證
+- Build/run: `pnpm run fetch` / `pnpm run translate` / `pnpm run ingest`（= fetch && translate）/ `pnpm run streams`
+- Test: `pnpm test`（vitest，只覆蓋 `scripts/lib/` 純函式）；fetch/translate 仍以實跑觀察輸出驗證
 
 ## File layout
 
 - `scripts/fetch.ts` — 抓 SOURCES 內 4 個 rss.app feed，去重後 insert 進 `kaf_posts`
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
+- `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 README「Streams」）
+- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows`）+ `__tests__/`
 - `.github/workflows/ingest.yml` — 唯一 CI workflow：cron + secrets
-- `.env.example` — 本地開發三把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY）
+- `.env.example` — 本地開發四把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY / YOUTUBE_API_KEY）
 - `docs/specs/` — spec 入口（目前空）
 
 ## Project-specific constraints（禁區與硬規則）

@@ -112,3 +112,22 @@ any small standing backlog — not a bug.
   a `mustMatch` regex; account timelines do not.
 - `.github/workflows/ingest.yml` → `cron` schedule. Set to hourly; see
   "Actual cron cadence" above for what GitHub really delivers.
+
+## Streams (live schedule)
+
+`pnpm run streams` (`scripts/streams.ts`) feeds the `kaf_streams` table behind
+`kaf-observatory`'s `/schedule` page. Each run:
+
+1. reads every roster channel's `UULV` (live) and `UULF` (long-form uploads)
+   RSS playlists — keyless, no quota;
+2. scans the `TWEET_FEEDS` rss.app feeds for YouTube links (`extractVideoIds`,
+   full 11-char ids only) and tags a tweet mentioning メンバーシップ限定 /
+   メン限 / membership as `members_only` — the Data API has no such flag;
+3. looks up new ids plus stale `upcoming`/`live` rows (≤50, older than 30 min)
+   with one `videos.list` call per 50 ids (1 quota unit each);
+4. upserts on `video_id`. Nothing is written to `kaf_posts`.
+
+The channel list `STREAM_CHANNEL_IDS` must stay in sync with
+`kaf-observatory/src/lib/schedule/roster.ts`; drift only costs
+tweet-discovered members-only streams. Needs `YOUTUBE_API_KEY` (GitHub secret
++ local `.env`), restricted to YouTube Data API v3 on the Google Cloud side.
