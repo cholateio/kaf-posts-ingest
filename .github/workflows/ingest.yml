@@ -12,7 +12,9 @@ on:
   # activity (state=disabled_inactivity; happened ~2026-10-01, Reader stale
   # for 8 days). Re-enable with `gh workflow enable ingest.yml`.
   schedule:
-    - cron: "0 * * * *"
+    # Minute 17, not 0: GitHub drops the most schedules at the top of the
+    # hour; after the 2026-10-09 re-enable, six consecutive :00 slots never fired.
+    - cron: "17 * * * *"
   # Manual trigger for testing without waiting for the next hour.
   workflow_dispatch:
 
