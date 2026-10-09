@@ -22,6 +22,13 @@ export const STREAM_CHANNEL_IDS: string[] = [
     'UCfBkUgaJ6eqYA9_TX2cmq9A', // 理芽 music
     'UCE7gtjLeZKNXLp5YURzYYeg', // 春猿火 music
     'UCah4_WVjmr8XA7i5aigwV-Q', // ヰ世界情緒 music
+    'UCZYl1o6ftRLKZP6U4KjQl3g', // 理芽 STRANGE GIRL CLUB (stream)
+    'UC5BzXtjnKt1fjEDjEJwx5JA', // 春猿火 台風倶楽部 (stream)
+    'UC3VN9h8fokwB2XURWHNcdWw', // ヰ世界情緒 電子通信部 (stream)
+    'UC7Gow-kNHq21oejSIDg9PAg', // 幸祜 music
+    'UCyCbd63S29BuFOkJC2-aR4g', // 幸祜 幸福拡張部電脳科 (stream)
+    'UCAOhUv73jM5iCpOhuJOQzxA', // KAMITSUBAKI STUDIO (group)
+    'UCfiSo8tO3WPU-8YOgr4Ba6g', // V.W.P (group)
 ];
 
 // rss.app tweet feeds scanned for youtube links only; nothing is written to
