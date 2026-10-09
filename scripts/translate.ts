@@ -230,7 +230,7 @@ async function main() {
         if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
 
         const { data: candidates, error } = await db
-            .from('KAF_Posts')
+            .from('kaf_posts')
             .select('id, external_id, original_text')
             .is('translation', null)
             .eq('source_type', 'x')
@@ -267,7 +267,7 @@ async function main() {
         try {
             const result = await callGemini(geminiKey, post.original_text, usage);
             const { error: updErr } = await db
-                .from('KAF_Posts')
+                .from('kaf_posts')
                 .update({
                     translation: result.translation,
                     annotated: result.annotated,

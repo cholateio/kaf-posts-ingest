@@ -3,7 +3,7 @@
 Headless RSS + translation worker for the `kaf-observatory` Supabase backend.
 Runs on a GitHub Actions cron, fetches the configured X (Twitter) RSS feeds,
 inserts new posts, then runs `gemini-3.5-flash-lite` on the untranslated ones
-and writes the translations back to the same `KAF_Posts` row.
+and writes the translations back to the same `kaf_posts` row.
 
 The frontend (`kaf-observatory`, formerly `virtual-desk`) only **reads** from
 Supabase. No Gemini key lives on a public web surface; rate-limit abuse
@@ -12,11 +12,11 @@ endpoint.
 
 ## Schema assumption
 
-`KAF_Posts` table has these columns (run the migration in Supabase Studio
+`kaf_posts` table has these columns (run the migration in Supabase Studio
 before first ingest if they don't exist yet):
 
 ```sql
-ALTER TABLE "KAF_Posts"
+ALTER TABLE kaf_posts
   ADD COLUMN translation TEXT,
   ADD COLUMN annotated   JSONB,
   ADD COLUMN vocabulary  JSONB,

@@ -147,7 +147,7 @@ async function main() {
             }
 
             const externalIds = relevant.map((e) => e.externalId);
-            const { data: existing } = await db.from('KAF_Posts').select('external_id').in('external_id', externalIds);
+            const { data: existing } = await db.from('kaf_posts').select('external_id').in('external_id', externalIds);
 
             const existingIds = new Set((existing ?? []).map((p: { external_id: string }) => p.external_id));
             const newEntries = relevant.filter((e) => !existingIds.has(e.externalId));
@@ -167,7 +167,7 @@ async function main() {
                 published_at: e.publishedAt,
             }));
 
-            const { error: insErr } = await db.from('KAF_Posts').insert(rows);
+            const { error: insErr } = await db.from('kaf_posts').insert(rows);
             if (insErr) throw new Error(`Insert failed: ${insErr.message}`);
 
             totalFetched += rows.length;

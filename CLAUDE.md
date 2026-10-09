@@ -6,9 +6,9 @@
 ## Project goal
 
 RSS 抓取 + 翻譯 worker：每小時抓 KAF（花譜）相關 X/Twitter 帳號的 rss.app
-RSS feed，寫入 Supabase `KAF_Posts` 表，再用 Gemini 翻譯未翻譯的貼文
+RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼文
 （日→繁中，含註解/單字/文法欄位）回寫同一列。前端消費者是
-**kaf-observatory**（舊名 virtual-desk）的 Reader overlay——唯讀 `KAF_Posts`。
+**kaf-observatory**（舊名 virtual-desk）的 Reader overlay——唯讀 `kaf_posts`。
 
 ## Stack
 
@@ -25,7 +25,7 @@ RSS feed，寫入 Supabase `KAF_Posts` 表，再用 Gemini 翻譯未翻譯的貼
 
 ## File layout
 
-- `scripts/fetch.ts` — 抓 SOURCES 內 4 個 rss.app feed，去重後 insert 進 `KAF_Posts`
+- `scripts/fetch.ts` — 抓 SOURCES 內 4 個 rss.app feed，去重後 insert 進 `kaf_posts`
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
 - `.github/workflows/ingest.yml` — 唯一 CI workflow：cron + secrets
 - `.env.example` — 本地開發三把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY）
