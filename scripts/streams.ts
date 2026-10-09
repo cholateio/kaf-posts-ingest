@@ -29,6 +29,7 @@ export const STREAM_CHANNEL_IDS: string[] = [
     'UCyCbd63S29BuFOkJC2-aR4g', // 幸祜 幸福拡張部電脳科 (stream)
     'UCAOhUv73jM5iCpOhuJOQzxA', // KAMITSUBAKI STUDIO (group)
     'UCfiSo8tO3WPU-8YOgr4Ba6g', // V.W.P (group)
+    'UCRvkXFtB70ZADg4L6A8L3wQ', // CIEL (single channel)
 ];
 
 // rss.app tweet feeds scanned for youtube links only; nothing is written to
