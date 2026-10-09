@@ -3,13 +3,14 @@
 
 name = "kaf-posts-ingest"
 status = "done"            # active | mvp | done | paused | abandoned
-status_note = "翻譯已修復,加官方優先與 feed 相關性閘,成本已 log 化;無計畫中工作,feed 失效或帳單異常再回來"
-updated = 2026-07-28       # 最後一次人工確認本檔內容的日期
+status_note = "每小時抓推文翻譯並發現神椿直播寫 kaf_streams;feed 失效、YouTube 額度或帳單異常再回來"
+updated = 2026-10-09       # 最後一次人工確認本檔內容的日期
 
 [commands]                 # key = 用途短名;value = 可直接複製執行的指令
 ingest = "pnpm run ingest"       # 完整跑一次攝入:fetch 再 translate
 fetch = "pnpm run fetch"         # 只抓 RSS、insert 新貼文
 translate = "pnpm run translate" # 只翻譯未翻譯列(每輪 ≤10)
+streams = "pnpm run streams"     # 發現直播/翻唱,upsert kaf_streams
 
 [[paid]]
 service = "Google Gemini API"   # gemini-3.5-flash-lite
@@ -26,7 +27,7 @@ monthly_est = "US$3-4/月(實測校準,未對帳單)"
 cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
 
 [[paid]]
-service = "Supabase"   # KAF_Posts 表
+service = "Supabase"   # kaf_posts / kaf_streams 表
 billing = "free-tier"        # user 2026-07-11 確認未付費;與 kaf-observatory 共用同一專案,勿重複計費
 monthly_est = "$0"
 cancel = "與 kaf-observatory 共用同一後端,不可單獨停用,需一併評估"
@@ -38,3 +39,4 @@ billing = "月費"
 # 停掉 = fetch.ts 的 4 個 feed 一起失效,無備援來源。
 monthly_est = "NT$260/月"
 cancel = "rss.app 帳號後台取消訂閱;取消後 fetch.ts 的 4 個 feed 全部失效"
+# YouTube Data API v3(streams 步驟):免費額度 10k units/日,無帳單,不列 [[paid]]。

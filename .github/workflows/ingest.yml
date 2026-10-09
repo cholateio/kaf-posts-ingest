@@ -8,6 +8,9 @@ on:
   # get unmetered Actions on standard runners. If punctuality ever matters,
   # drive workflow_dispatch from an external cron instead of tightening this
   # schedule — GitHub drops tightened schedules too.
+  # GitHub also auto-disables this schedule after 60 days without repo
+  # activity (state=disabled_inactivity; happened ~2026-10-01, Reader stale
+  # for 8 days). Re-enable with `gh workflow enable ingest.yml`.
   schedule:
     - cron: "0 * * * *"
   # Manual trigger for testing without waiting for the next hour.
