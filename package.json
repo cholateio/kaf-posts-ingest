@@ -8,7 +8,9 @@
   "scripts": {
     "fetch": "tsx scripts/fetch.ts",
     "translate": "tsx scripts/translate.ts",
-    "ingest": "pnpm run fetch && pnpm run translate"
+    "ingest": "pnpm run fetch && pnpm run translate",
+    "test": "vitest run",
+    "streams": "tsx scripts/streams.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -17,7 +19,9 @@
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "tsx": "^4.19.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^5.0.3"
   }
 }
