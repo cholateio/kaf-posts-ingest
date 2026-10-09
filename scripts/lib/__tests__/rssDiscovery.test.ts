@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { playlistFeedUrl, videoIdsFromYoutubeFeed } from '../rssDiscovery';
 
 const XML = `<?xml version="1.0"?><feed><title>Live streams</title>
@@ -32,5 +32,30 @@ describe('playlistItemsVideoIds', () => {
     it('returns [] for a payload without items', async () => {
         const { playlistItemsVideoIds } = await import('../rssDiscovery');
         expect(playlistItemsVideoIds({})).toEqual([]);
+    });
+});
+
+describe('fetchPlaylistVideoIds', () => {
+    it('falls back to playlistItems.list when the RSS endpoint is blocked', async () => {
+        const { fetchPlaylistVideoIds } = await import('../rssDiscovery');
+        const fetchImpl = vi.fn(async (url: string) =>
+            url.includes('feeds/videos.xml')
+                ? new Response('blocked', { status: 404 })
+                : new Response(JSON.stringify({ items: [{ contentDetails: { videoId: 'UuOR80TUvFs' } }] }), { status: 200 }));
+        await expect(fetchPlaylistVideoIds('UCkJYa9mVS25eHOO9bM7YK3Q', 'live', 'KEY', fetchImpl as unknown as typeof fetch))
+            .resolves.toEqual({ ids: ['UuOR80TUvFs'], via: 'api' });
+    });
+    it('treats a playlist that does not exist (404 from both) as empty, not an error', async () => {
+        // ヰ世界情緒's stream channel has no long-form uploads: UULF… 404s everywhere.
+        const { fetchPlaylistVideoIds } = await import('../rssDiscovery');
+        const fetchImpl = vi.fn(async () => new Response('nope', { status: 404 }));
+        await expect(fetchPlaylistVideoIds('UC3VN9h8fokwB2XURWHNcdWw', 'uploads', 'KEY', fetchImpl as unknown as typeof fetch))
+            .resolves.toEqual({ ids: [], via: 'api' });
+    });
+    it('still throws when the API fails for another reason', async () => {
+        const { fetchPlaylistVideoIds } = await import('../rssDiscovery');
+        const fetchImpl = vi.fn(async (url: string) => new Response('x', { status: url.includes('feeds/') ? 500 : 403 }));
+        await expect(fetchPlaylistVideoIds('UCkJYa9mVS25eHOO9bM7YK3Q', 'live', 'KEY', fetchImpl as unknown as typeof fetch))
+            .rejects.toThrow(/403/);
     });
 });

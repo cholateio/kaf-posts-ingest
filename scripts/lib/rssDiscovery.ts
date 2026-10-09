@@ -46,6 +46,9 @@ export async function fetchPlaylistVideoIds(
     if (rss.ok) return { ids: videoIdsFromYoutubeFeed(await rss.text()), via: 'rss' };
     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=15&playlistId=${playlistId(channelId, kind)}&key=${apiKey}`;
     const api = await fetchImpl(url);
+    // 404 from the API too = the auto playlist does not exist (a channel with
+    // no long-form uploads has no UULF…). Empty, not an error.
+    if (api.status === 404) return { ids: [], via: 'api' };
     if (!api.ok) throw new Error(`rss HTTP ${rss.status}, playlistItems HTTP ${api.status}`);
     return { ids: playlistItemsVideoIds((await api.json()) as PlaylistItemsPayload), via: 'api' };
 }
