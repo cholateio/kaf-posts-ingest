@@ -14,7 +14,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 
 - Language: TypeScript 5.8 / Node 22（tsx 直跑 .ts，無編譯步驟，`noEmit: true`）
 - 外部服務: Supabase（`@supabase/supabase-js`）、Google Gemini
-  `gemini-2.5-flash`（`@google/generative-ai`）、rss.app（feed 供應方）
+  `gemini-3.5-flash-lite`（`@google/generative-ai`；2.5 系列 2026-07 被 Google 收掉，見 LESSONS）、rss.app（feed 供應方）
 - 部署: GitHub Actions 執行，**觸發來源是 GCP Cloud Scheduler**（專案 `kaf-obs`，
   job `kaf-posts-ingest-hourly`，`15 * * * *`，用 fine-grained PAT 打
   workflow_dispatch API）；secrets 走 Actions。`ingest.yml` 只有
@@ -29,7 +29,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 - `scripts/fetch.ts` — 抓 SOURCES 內 4 個 rss.app feed，去重後 insert 進 `kaf_posts`
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 README「Streams」）
-- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows`）+ `__tests__/`
+- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly`）+ `__tests__/`
 - `.github/workflows/ingest.yml` — 唯一 CI workflow：workflow_dispatch（由 Cloud Scheduler 觸發）+ secrets
 - `.env.example` — 本地開發四把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY / YOUTUBE_API_KEY）
 - `docs/specs/` — spec 入口（目前空）

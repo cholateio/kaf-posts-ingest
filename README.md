@@ -3,7 +3,9 @@
 Headless RSS + translation worker for the `kaf-observatory` Supabase backend.
 Runs on GitHub Actions, triggered hourly by a GCP Cloud Scheduler job; fetches the configured X (Twitter) RSS feeds,
 inserts new posts, then runs `gemini-3.5-flash-lite` on the untranslated ones
-and writes the translations back to the same `kaf_posts` row.
+and writes the translations back to the same `kaf_posts` row. A third step
+discovers live streams for the roster channels and upserts `kaf_streams`
+(see "Streams" below).
 
 The frontend (`kaf-observatory`, formerly `virtual-desk`) only **reads** from
 Supabase. No Gemini key lives on a public web surface; rate-limit abuse
@@ -60,25 +62,30 @@ Each run logs its queue composition and billed token usage, e.g.
 ## Local dev
 
 ```bash
-cp .env.example .env       # then fill in the three keys
+cp .env.example .env       # then fill in the four keys
 pnpm install
 pnpm run fetch             # pulls RSS, inserts new Posts rows
 pnpm run translate         # translates up to 10 untranslated rows
 pnpm run ingest            # both, in order
+pnpm run streams           # live-schedule discovery, upserts kaf_streams
+pnpm test                  # vitest over scripts/lib/ pure functions only
 ```
 
 ## Deploy (GitHub Actions)
 
 1. Push this repo to GitHub. This one is **public** — safe because no secret
    ever lands in the tree (`.env` is gitignored, `.env.example` holds only
-   placeholders, all three keys live in Actions secrets), and public repos get
+   placeholders, all four keys live in Actions secrets), and public repos get
    unmetered Actions minutes on standard runners.
-2. Repo Settings → Secrets and variables → Actions → add three repository
+2. Repo Settings → Secrets and variables → Actions → add four repository
    secrets:
     - `SUPABASE_URL`
     - `SUPABASE_SERVICE_KEY` (service-role, bypasses RLS — never expose)
     - `GEMINI_API_KEY` (recommend a separate Google AI Studio key from
       other projects so it can be revoked independently)
+    - `YOUTUBE_API_KEY` (YouTube Data API v3 only; the streams step is
+      `continue-on-error`, so a missing key degrades the schedule page but
+      never fails fetch/translate)
 3. Actions tab → "Ingest" workflow → **Run workflow** to verify before
    relying on the trigger.
 
@@ -100,6 +107,13 @@ down with it. That happened 2026-10-01..09.
 If runs stop: check the Scheduler job's status in the GCP console first
 (401 = PAT revoked or wrong, 422 = workflow disabled), then
 `gh api repos/cholateio/kaf-posts-ingest/actions/workflows --jq '.workflows[].state'`.
+
+A green run does not prove the worker works: per-row failures are caught
+and never change the exit code (12 days of `Translated 0/10` hid behind
+success badges in July 2026). Health is the log, not the badge —
+`gh run view <id> --log | grep -E 'Done\.|Translating'` should show
+`Total new posts`, `Translated N/N` with N > 0 whenever a backlog exists,
+and `new=… refreshed=…` from the streams step.
 
 Throughput math, measured over 79 days of archived rows (post-gate):
 **67 translatable posts/day on average, single-day peak 148**, against a
@@ -141,6 +155,13 @@ same day.
 3. looks up new ids plus stale `upcoming`/`live` rows (≤50, older than 30 min)
    with one `videos.list` call per 50 ids (1 quota unit each);
 4. upserts on `video_id`. Nothing is written to `kaf_posts`.
+
+It runs as the last step of `ingest.yml` with `continue-on-error: true`, so
+a YouTube quota or key problem shows up as a yellow step, not a red run.
+Row shape (`StreamRow` in `scripts/lib/youtube.ts`): `video_id`,
+`channel_id`, `title`, `scheduled_start`, `actual_start`, `actual_end`,
+`published_at`, `status` (`upcoming` / `live` / `ended` / `published` / `unavailable`), `is_premiere`,
+`members_only`, `discovered_via`, `hashtags`, `updated_at`.
 
 The channel list `STREAM_CHANNEL_IDS` must stay in sync with
 `kaf-observatory/src/lib/schedule/roster.ts`; drift only costs

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "RSS ingest + translation worker for the kaf-rss-reader Supabase backend.",
+  "description": "RSS ingest, translation and live-schedule worker for the kaf-observatory Supabase backend.",
   "packageManager": "pnpm@11.5.0",
   "scripts": {
     "fetch": "tsx scripts/fetch.ts",
