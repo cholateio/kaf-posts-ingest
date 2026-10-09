@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchVideoItems, isoDurationToSeconds, toStreamRow, type YtVideoItem } from '../youtube';
+import { fetchVideoItems, hashtagsOf, isoDurationToSeconds, toStreamRow, unavailableRow, type YtVideoItem } from '../youtube';
 
 const NOW = new Date('2026-10-09T12:00:00Z');
 const base = (over: Partial<YtVideoItem> & { id: string }): YtVideoItem => ({
@@ -63,5 +63,25 @@ describe('fetchVideoItems', () => {
     it('throws on non-200 so the caller can treat the batch as stale', async () => {
         const fetchImpl = vi.fn(async () => new Response('quota', { status: 403 }));
         await expect(fetchVideoItems(['a'.repeat(11)], 'KEY', fetchImpl as unknown as typeof fetch)).rejects.toThrow(/403/);
+    });
+});
+
+describe('hashtagsOf', () => {
+    it('extracts hashtags from a description, deduped, in order', () => {
+        const desc = '10月13日(火) 20:00〜「神椿報奏部 vol.65」を生放送！\n出演：春猿火 / ヰ世界情緒\n\n#春猿火 #ヰ世界情緒 #KAMITSUBAKI_STUDIO #神椿無電 #春猿火';
+        expect(hashtagsOf(desc)).toEqual(['春猿火', 'ヰ世界情緒', 'KAMITSUBAKI_STUDIO', '神椿無電']);
+    });
+    it('stops a tag at CJK punctuation and ignores bare #', () => {
+        expect(hashtagsOf('#春猿火UNITY』のお話 # x #3 ticket')).toEqual(['春猿火UNITY', '3']);
+        expect(hashtagsOf('')).toEqual([]);
+    });
+});
+
+describe('toStreamRow hashtags', () => {
+    it('stores the description hashtags; empty without a description', () => {
+        const withDesc = toStreamRow(base({ id: 'e'.repeat(11), snippet: { channelId: 'c', title: 't', publishedAt: '2026-10-09T09:00:00Z', liveBroadcastContent: 'none', description: 'x #花譜 #神椿' } }), 'rss_uploads', false, NOW);
+        expect(withDesc.hashtags).toEqual(['花譜', '神椿']);
+        expect(toStreamRow(base({ id: 'f'.repeat(11) }), 'rss_uploads', false, NOW).hashtags).toEqual([]);
+        expect(unavailableRow('g'.repeat(11), { channel_id: 'c', title: 't', published_at: '2026-10-01T00:00:00Z', discovered_via: 'rss_live' }, NOW).hashtags).toEqual([]);
     });
 });

@@ -3,7 +3,7 @@ export type DiscoveredVia = 'rss_live' | 'rss_uploads' | 'tweet';
 
 export interface YtVideoItem {
     id: string;
-    snippet: { channelId: string; title: string; publishedAt: string; liveBroadcastContent: 'none' | 'upcoming' | 'live' };
+    snippet: { channelId: string; title: string; description?: string; publishedAt: string; liveBroadcastContent: 'none' | 'upcoming' | 'live' };
     contentDetails?: { duration?: string };
     liveStreamingDetails?: { scheduledStartTime?: string; actualStartTime?: string; actualEndTime?: string };
 }
@@ -20,6 +20,7 @@ export interface StreamRow {
     is_premiere: boolean;
     members_only: boolean;
     discovered_via: DiscoveredVia;
+    hashtags: string[];
     updated_at: string;
 }
 
@@ -49,6 +50,16 @@ export async function fetchVideoItems(ids: string[], apiKey: string, fetchImpl: 
     return out;
 }
 
+// Mirrored in kaf-observatory/src/lib/schedule/server/youtube.ts. A tag ends
+// at whitespace or CJK punctuation ("#春猿火UNITY』" → 春猿火UNITY); which
+// talent a tag names is decided by the web's roster at read time.
+const HASHTAG_RE = /#([^\s#、。，,.!！?？「」『』（）()【】]+)/g;
+export function hashtagsOf(description: string): string[] {
+    const out: string[] = [];
+    for (const m of description.matchAll(HASHTAG_RE)) if (!out.includes(m[1])) out.push(m[1]);
+    return out;
+}
+
 export function toStreamRow(item: YtVideoItem, discoveredVia: DiscoveredVia, membersOnly: boolean, now: Date): StreamRow {
     const lsd = item.liveStreamingDetails;
     const durationS = isoDurationToSeconds(item.contentDetails?.duration ?? 'P0D');
@@ -71,6 +82,7 @@ export function toStreamRow(item: YtVideoItem, discoveredVia: DiscoveredVia, mem
         is_premiere: isPremiere,
         members_only: membersOnly,
         discovered_via: discoveredVia,
+        hashtags: hashtagsOf(item.snippet.description ?? ''),
         updated_at: now.toISOString(),
     };
 }
@@ -89,6 +101,7 @@ export function unavailableRow(
         status: 'unavailable',
         is_premiere: false,
         members_only: false,
+        hashtags: [],
         updated_at: now.toISOString(),
     };
 }
