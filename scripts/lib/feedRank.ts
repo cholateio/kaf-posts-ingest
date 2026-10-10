@@ -1,4 +1,4 @@
-export type FeedType = 'official' | 'fan' | 'kafu' | 'rim' | 'harusaruhi' | 'isekaijoucho' | 'koko' | 'ciel';
+export type FeedType = 'official' | 'fan' | 'kafu' | 'rim' | 'harusaruhi' | 'isekaijoucho' | 'koko' | 'ciel' | 'asu';
 
 // One tweet can sit in several feeds (the fan search finds 花譜's own tweets,
 // official accounts retweet talents, talents retweet official). kaf_posts
@@ -13,6 +13,7 @@ const RANK: Record<FeedType, number> = {
     isekaijoucho: 2,
     koko: 2,
     ciel: 2,
+    asu: 2,
     kafu: 1,
     fan: 0,
 };
@@ -28,6 +29,7 @@ export const KNOWN_AUTHORS: Record<string, FeedType> = {
     isekaijoucho: 'isekaijoucho',
     koko__virtual: 'koko',
     ciel_vanillasky: 'ciel',
+    asu_virtual: 'asu',
 };
 
 /**

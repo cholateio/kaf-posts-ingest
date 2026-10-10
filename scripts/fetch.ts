@@ -121,6 +121,7 @@ const SOURCES: Source[] = [
     { name: 'Isekaijoucho', feedType: 'isekaijoucho', rssUrl: 'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', maxQuietHours: TIMELINE_QUIET_H },
     { name: 'Koko', feedType: 'koko', rssUrl: 'https://rss.app/feeds/TYDwRRSZFvrOQSxW.xml', maxQuietHours: TIMELINE_QUIET_H },
     { name: 'CIEL', feedType: 'ciel', rssUrl: 'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'ASU', feedType: 'asu', rssUrl: 'https://rss.app/feeds/WEFzDiokBhPkt2IO.xml', maxQuietHours: TIMELINE_QUIET_H },
 ];
 
 interface RssEntry {

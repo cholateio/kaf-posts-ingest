@@ -30,6 +30,8 @@ export const STREAM_CHANNEL_IDS: string[] = [
     'UCAOhUv73jM5iCpOhuJOQzxA', // KAMITSUBAKI STUDIO (group)
     'UCfiSo8tO3WPU-8YOgr4Ba6g', // V.W.P (group)
     'UCRvkXFtB70ZADg4L6A8L3wQ', // CIEL (single channel)
+    'UCBLGjbYv6-xxju1i44RjnnA', // 明透 music
+    'UCfzP3R8QQ77ryTnHeEiBVMw', // 明透 CLEAR ASU (stream)
 ];
 
 // rss.app tweet feeds scanned for youtube links only; nothing is written to
@@ -46,6 +48,7 @@ export const TWEET_FEEDS: string[] = [
     'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', // @isekaijoucho
     'https://rss.app/feeds/TYDwRRSZFvrOQSxW.xml', // @KOKO__virtual
     'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', // @CIEL_VanillaSky
+    'https://rss.app/feeds/WEFzDiokBhPkt2IO.xml', // @ASU_virtual
 ];
 
 const STALE_REFRESH_MS = 30 * 60 * 1000;

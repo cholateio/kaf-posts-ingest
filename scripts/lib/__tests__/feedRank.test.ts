@@ -31,6 +31,7 @@ describe('memberships', () => {
         expect(memberships('fan', 'isekaijoucho', true)).toEqual(['isekaijoucho']);
         expect(memberships('fan', 'harusaruhi', true)).toEqual(['harusaruhi']);
         expect(memberships('fan', 'koko__virtual', true)).toEqual(['koko']);
+        expect(memberships('fan', 'asu_virtual', true)).toEqual(['asu']);
     });
     it('a talent retweeting 幸祜 puts the row in both talent feeds', () => {
         expect(memberships('rim', 'koko__virtual', false)).toEqual(['rim', 'koko']);
