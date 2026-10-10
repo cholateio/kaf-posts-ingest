@@ -76,8 +76,13 @@ that has seen it (`feedRank.ts`: official > talent accounts > kafu > fan):
 when a higher feed meets a row a lower one stored first, `fetch.ts` retags
 it (`retagged N rows to official`, and the `retagged` column of the job
 summary). Without this, whichever feed rss.app refreshed first won, and a
-new cover tweet sat in the fan tab (2026-10-10). Worst case now: an official
-tweet shows under the fan tab until the next hourly run.
+new cover tweet sat in the fan tab (2026-10-10). The search feeds also
+store tweets *authored* by @virtual_kaf / @kaf_info as `official` directly
+(`authorFeedType` in `SOURCES`, author read from the tweet URL by
+`tweetAuthor.ts`), so those never touch the fan tab even for an hour, and
+survive an outage of the official feed (`N new posts (k stored as
+official)` in the log). Retweets by the official accounts carry the
+original author's URL, so for them the retag path is what applies.
 
 ## Translation priority
 

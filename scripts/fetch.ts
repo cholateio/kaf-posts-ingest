@@ -17,6 +17,7 @@ import { appendFileSync } from 'node:fs';
 import { feedWarnings } from './lib/feedHealth';
 import { tweetBody } from './lib/tweetBody';
 import { idsToRetag, type FeedType } from './lib/feedRank';
+import { tweetAuthor } from './lib/tweetAuthor';
 
 type MediaContent = { $: { url: string; medium?: string } };
 
@@ -49,6 +50,15 @@ interface Source {
      */
     mustMatch?: RegExp;
     /**
+     * Per-author override of feedType. The search feeds find the official
+     * accounts' own tweets, usually before the official feed refreshes; a
+     * row stored as `fan` would sit in the fan tab until feedRank retags it
+     * an hour later. Storing it as `official` at once also keeps the tweet
+     * if the official feed is down (codex review 2026-10-10). Retweets are
+     * not affected (their URL is the original author's).
+     */
+    authorFeedType?: Record<string, FeedType>;
+    /**
      * Warn when the feed's newest entry is older than this. Set from the
      * longest gap between consecutive archived posts (2026-07..10): fan 11.5h,
      * kafu 39h, account timelines ~7d.
@@ -57,6 +67,7 @@ interface Source {
 }
 
 const TIMELINE_QUIET_H = 10 * 24;
+const OFFICIAL_AUTHORS: Record<string, FeedType> = { virtual_kaf: 'official', kaf_info: 'official' };
 
 // All sources are X (Twitter) feeds. The previous YT source was dropped when
 // the frontend removed YouTube content — keeping the call here would just
@@ -83,6 +94,7 @@ const SOURCES: Source[] = [
         feedType: 'fan',
         rssUrl: 'https://rss.app/feeds/sobCJ2ZL60gmrRKt.xml',
         mustMatch: /花譜|kaf|カフ|可不/i,
+        authorFeedType: OFFICIAL_AUTHORS,
         maxQuietHours: 24,
     },
     {
@@ -90,6 +102,7 @@ const SOURCES: Source[] = [
         feedType: 'fan',
         rssUrl: 'https://rss.app/feeds/u9s6xz2Y3aj9qbFW.xml',
         mustMatch: /花譜|kaf|カフ|可不/i,
+        authorFeedType: OFFICIAL_AUTHORS,
         maxQuietHours: 24,
     },
     {
@@ -97,6 +110,7 @@ const SOURCES: Source[] = [
         feedType: 'kafu',
         rssUrl: 'https://rss.app/feeds/O6oRYJpoK0nmmzSm.xml',
         mustMatch: /可不|kafu/i,
+        authorFeedType: OFFICIAL_AUTHORS,
         maxQuietHours: 72,
     },
     // Talent main accounts (not the *_staff / *_info ones): they retweet the
@@ -219,6 +233,10 @@ async function main() {
             const relevant = source.mustMatch
                 ? entries.filter((e) => source.mustMatch!.test(tweetBody(e.text)))
                 : entries;
+            const typeOf = (e: RssEntry): FeedType => {
+                const author = tweetAuthor(e.externalId);
+                return (author && source.authorFeedType?.[author]) || source.feedType;
+            };
             row.dropped = entries.length - relevant.length;
             row.warnings = feedWarnings({ ...row, maxQuietHours: source.maxQuietHours, now: new Date() });
 
@@ -241,12 +259,20 @@ async function main() {
                 .in('external_id', externalIds);
             if (exErr) throw new Error(`Select existing failed: ${exErr.message}`);
 
-            const retag = idsToRetag(source.feedType, existing ?? []);
-            if (retag.length) {
-                const { error: rtErr } = await db.from('kaf_posts').update({ feed_type: source.feedType }).in('external_id', retag);
+            // Rows may resolve to different feed types (authorFeedType), so retag per target.
+            const typeById = new Map(relevant.map((e) => [e.externalId, typeOf(e)]));
+            const byTarget = new Map<FeedType, { external_id: string; feed_type: string }[]>();
+            for (const ex of existing ?? []) {
+                const target = typeById.get(ex.external_id) ?? source.feedType;
+                byTarget.set(target, [...(byTarget.get(target) ?? []), ex]);
+            }
+            for (const [target, rowsOfTarget] of byTarget) {
+                const retag = idsToRetag(target, rowsOfTarget);
+                if (retag.length === 0) continue;
+                const { error: rtErr } = await db.from('kaf_posts').update({ feed_type: target }).in('external_id', retag);
                 if (rtErr) throw new Error(`Retag failed: ${rtErr.message}`);
-                row.retagged = retag.length;
-                console.log(`  ${source.name}: retagged ${retag.length} rows to ${source.feedType}`);
+                row.retagged += retag.length;
+                console.log(`  ${source.name}: retagged ${retag.length} rows to ${target}`);
             }
 
             const existingIds = new Set((existing ?? []).map((p: { external_id: string }) => p.external_id));
@@ -259,7 +285,7 @@ async function main() {
 
             const rows = newEntries.map((e) => ({
                 source_type: 'x' as const,
-                feed_type: source.feedType,
+                feed_type: typeOf(e),
                 external_id: e.externalId,
                 title: e.title,
                 original_text: e.text,
@@ -272,7 +298,8 @@ async function main() {
 
             totalFetched += rows.length;
             row.inserted = rows.length;
-            console.log(`  ${source.name}: ${rows.length} new posts`);
+            const overridden = rows.filter((r) => r.feed_type !== source.feedType).length;
+            console.log(`  ${source.name}: ${rows.length} new posts${overridden ? ` (${overridden} stored as ${[...new Set(rows.map((r) => r.feed_type))].filter((t) => t !== source.feedType).join('/')})` : ''}`);
         } catch (err) {
             // Per-source failures must NOT halt the loop — a flaky rss.app endpoint
             // for one feed shouldn't block the others from ingesting.

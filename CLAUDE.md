@@ -29,7 +29,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 - `scripts/fetch.ts` — 抓 SOURCES 內 9 個 rss.app feed（花譜 2 帳號 + 3 搜尋 + 4 位成員主帳號），去重後 insert 進 `kaf_posts`
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 README「Streams」）
-- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly` / `tweetBody` / `feedRank` / `feedHealth` / `stripNul`）+ `__tests__/`
+- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly` / `tweetBody` / `tweetAuthor` / `feedRank` / `feedHealth` / `stripNul`）+ `__tests__/`
 - `.github/workflows/ingest.yml` — 唯一 CI workflow：workflow_dispatch（由 Cloud Scheduler 觸發）+ secrets
 - `.env.example` — 本地開發四把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY / YOUTUBE_API_KEY）
 - `docs/specs/` — spec 入口（目前空）
