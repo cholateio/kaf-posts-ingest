@@ -37,6 +37,16 @@ forever, so that column alone is not a backlog count.
 | --- | --- | --- |
 | KAF Official / KAF Info | account timelines | yes |
 | KAF Fan / KAFU | `x.com/search?q=…` | **no — ~10% off-topic** |
+| RIM / Harusaruhi / Isekaijoucho / CIEL | talent main-account timelines | yes |
+
+The talent feeds (`feed_type` = `rim` / `harusaruhi` / `isekaijoucho` /
+`ciel`, matching the observatory roster ids) exist for the streams step:
+members-only streams never appear in the public UULV playlists, so the
+talents' tweets are the only discovery path. The Reader has no tab for them
+and `translate.ts` does not queue them, so they cost no Gemini tokens.
+Main accounts were chosen over the `*_staff` ones because they retweet the
+staff announcements and add the day-of "starting soon" posts (measured on
+@RIM_virtual vs @rim_staff, 2026-10-10).
 
 X returns loosely related results for CJK search queries: terms get
 token-split (`板倉可奈　永久不滅` matches 可+不, `瀧廉太郎の「花」の自筆譜`
@@ -157,7 +167,8 @@ same day.
    playlists — RSS first (keyless), falling back to `playlistItems.list`
    (1 quota unit) because GitHub runners get 404/500 from the RSS endpoints
    (observed 2026-10-09, IP-based);
-2. scans the `TWEET_FEEDS` rss.app feeds for YouTube links (`extractVideoIds`,
+2. scans the `TWEET_FEEDS` rss.app feeds (@kaf_info plus the talent main
+   accounts, same feeds as `fetch.ts`) for YouTube links (`extractVideoIds`,
    full 11-char ids only); `members_only` comes from the text following each
    link (メンバーシップ限定 / メン限 / membership) or from the video title —
    the Data API has no such flag;

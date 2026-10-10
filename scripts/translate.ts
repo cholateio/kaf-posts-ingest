@@ -31,7 +31,9 @@ import { stripNul } from './lib/stripNul';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 // Drain order for the translation queue: official posts must never wait behind
-// the fan feed, which outproduces them ~25:1.
+// the fan feed, which outproduces them ~25:1. Talent feed types (rim, …) are
+// deliberately absent: the Reader has no tab for them yet, so translating
+// them would only spend Gemini tokens (decision 2026-10-10).
 const FEED_PRIORITY = ['official', 'kafu', 'fan'] as const;
 
 // Paid-tier USD per 1M tokens for GEMINI_MODEL — update both together.

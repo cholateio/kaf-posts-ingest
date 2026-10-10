@@ -34,8 +34,13 @@ export const STREAM_CHANNEL_IDS: string[] = [
 
 // rss.app tweet feeds scanned for youtube links only; nothing is written to
 // kaf_posts from here (that would leak into the Reader's "all" tab).
+// Keep in sync with fetch.ts SOURCES (same rss.app feeds).
 export const TWEET_FEEDS: string[] = [
     'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml', // @kaf_info
+    'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', // @RIM_virtual
+    'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', // @harusaruhi
+    'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', // @isekaijoucho
+    'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', // @CIEL_VanillaSky
 ];
 
 const STALE_REFRESH_MS = 30 * 60 * 1000;

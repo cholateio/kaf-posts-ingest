@@ -27,7 +27,10 @@ const parser = new Parser<Record<string, never>, { 'media:content': MediaContent
 
 interface Source {
     name: string;
-    feedType: 'official' | 'fan' | 'kafu';
+    // Talent ids match kaf-observatory/src/lib/schedule/roster.ts so a Reader
+    // tab per talent can key on them later. Only official/fan/kafu have tabs
+    // (and translation) today; talent rows exist for streams.ts.
+    feedType: 'official' | 'fan' | 'kafu' | 'rim' | 'harusaruhi' | 'isekaijoucho' | 'ciel';
     rssUrl: string;
     /**
      * Relevance gate for search-backed feeds only.
@@ -81,6 +84,14 @@ const SOURCES: Source[] = [
         mustMatch: /可不|kafu/i,
         maxQuietHours: 72,
     },
+    // Talent main accounts (not the *_staff / *_info ones): they retweet the
+    // staff announcements and carry the day-of "starting soon" posts.
+    // Members-only streams are absent from the public UULV playlists, so
+    // these tweets are the only way streams.ts learns about them.
+    { name: 'RIM', feedType: 'rim', rssUrl: 'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'Harusaruhi', feedType: 'harusaruhi', rssUrl: 'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'Isekaijoucho', feedType: 'isekaijoucho', rssUrl: 'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'CIEL', feedType: 'ciel', rssUrl: 'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', maxQuietHours: TIMELINE_QUIET_H },
 ];
 
 interface RssEntry {

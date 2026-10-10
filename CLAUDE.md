@@ -26,7 +26,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 
 ## File layout
 
-- `scripts/fetch.ts` — 抓 SOURCES 內 4 個 rss.app feed，去重後 insert 進 `kaf_posts`
+- `scripts/fetch.ts` — 抓 SOURCES 內 8 個 rss.app feed（花譜 2 帳號 + 2 搜尋 + 4 位成員主帳號），去重後 insert 進 `kaf_posts`
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 README「Streams」）
 - `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly`）+ `__tests__/`
