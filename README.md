@@ -110,10 +110,17 @@ If runs stop: check the Scheduler job's status in the GCP console first
 
 A green run does not prove the worker works: per-row failures are caught
 and never change the exit code (12 days of `Translated 0/10` hid behind
-success badges in July 2026). Health is the log, not the badge —
-`gh run view <id> --log | grep -E 'Done\.|Translating'` should show
-`Total new posts`, `Translated N/N` with N > 0 whenever a backlog exists,
-and `new=… refreshed=…` from the streams step.
+success badges in July 2026). Health is the log, not the badge — it
+should show `Total new posts`, `Translated N/N` with N > 0 whenever a
+backlog exists, and `new=… refreshed=…` from the streams step. Only the
+latest run's log comes back from `gh run view <id> --log`; for older runs it
+prints nothing, so fetch the zip instead:
+`gh api repos/cholateio/kaf-posts-ingest/actions/runs/<id>/logs > l.zip`.
+
+The fetch step also raises a `Feed health` annotation (shown on the run
+page) when a feed fails, returns 0 entries, has a newest entry older than
+its `maxQuietHours`, or loses more than half its entries to `mustMatch`;
+the job summary carries a per-feed table (entries / dropped / new / newest).
 
 Throughput math, measured over 79 days of archived rows (post-gate):
 **67 translatable posts/day on average, single-day peak 148**, against a
@@ -135,7 +142,9 @@ same day.
 - `scripts/translate.ts` → `FEED_PRIORITY` — the drain order described above.
 - `scripts/fetch.ts` → `SOURCES` array — add or remove RSS feeds here.
   All current sources are X feeds via rss.app. Anything search-backed needs
-  a `mustMatch` regex; account timelines do not.
+  a `mustMatch` regex; account timelines do not. Every source needs a
+  `maxQuietHours` — set it above the longest gap the feed has shown between
+  posts, or the health check warns on normal quiet spells.
 - Run frequency → the Cloud Scheduler job's cron in GCP (`kaf-obs`), not
   the workflow file. See "Trigger" above.
 

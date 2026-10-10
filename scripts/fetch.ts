@@ -13,6 +13,8 @@ import 'dotenv/config';
 
 import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
+import { appendFileSync } from 'node:fs';
+import { feedWarnings } from './lib/feedHealth';
 
 type MediaContent = { $: { url: string; medium?: string } };
 
@@ -39,25 +41,45 @@ interface Source {
      * patterns. Account timelines need no gate.
      */
     mustMatch?: RegExp;
+    /**
+     * Warn when the feed's newest entry is older than this. Set from the
+     * longest gap between consecutive archived posts (2026-07..10): fan 11.5h,
+     * kafu 39h, account timelines ~7d.
+     */
+    maxQuietHours: number;
 }
+
+const TIMELINE_QUIET_H = 10 * 24;
 
 // All sources are X (Twitter) feeds. The previous YT source was dropped when
 // the frontend removed YouTube content — keeping the call here would just
 // burn rss.app quota for rows nothing renders.
 const SOURCES: Source[] = [
-    { name: 'KAF Official', feedType: 'official', rssUrl: 'https://rss.app/feeds/TrZl0i4ipQm1dz7k.xml' },
-    { name: 'KAF Info', feedType: 'official', rssUrl: 'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml' },
+    {
+        name: 'KAF Official',
+        feedType: 'official',
+        rssUrl: 'https://rss.app/feeds/TrZl0i4ipQm1dz7k.xml',
+        maxQuietHours: TIMELINE_QUIET_H,
+    },
+    {
+        name: 'KAF Info',
+        feedType: 'official',
+        rssUrl: 'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml',
+        maxQuietHours: TIMELINE_QUIET_H,
+    },
     {
         name: 'KAF Fan #KAF',
         feedType: 'fan',
         rssUrl: 'https://rss.app/feeds/sobCJ2ZL60gmrRKt.xml',
         mustMatch: /花譜|kaf|カフ|可不/i,
+        maxQuietHours: 24,
     },
     {
         name: 'KAFU #KAFU',
         feedType: 'kafu',
         rssUrl: 'https://rss.app/feeds/O6oRYJpoK0nmmzSm.xml',
         mustMatch: /可不|kafu/i,
+        maxQuietHours: 72,
     },
 ];
 
@@ -113,6 +135,38 @@ async function parseRssFeed(feedUrl: string): Promise<RssEntry[]> {
     });
 }
 
+interface FeedReport {
+    name: string;
+    entries: number;
+    dropped: number;
+    inserted: number;
+    newestIso: string | null;
+    warnings: string[];
+}
+
+// The run badge stays green whatever happens per feed, so problems surface as
+// workflow annotations (listed on the run page) plus a per-feed table in the
+// job summary; the table doubles as the noise baseline for feed tuning.
+function reportFeedHealth(report: FeedReport[]) {
+    for (const r of report) {
+        for (const w of r.warnings) console.log(`::warning title=Feed health::${r.name}: ${w}`);
+    }
+    const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+    if (!summaryPath) return;
+    const now = Date.now();
+    const lines = [
+        '### Feeds',
+        '| feed | entries | dropped | new | newest | warnings |',
+        '| --- | --: | --: | --: | --: | --- |',
+        ...report.map((r) => {
+            const age = r.newestIso ? `${Math.floor((now - Date.parse(r.newestIso)) / 3600_000)}h ago` : '-';
+            return `| ${r.name} | ${r.entries} | ${r.dropped} | ${r.inserted} | ${age} | ${r.warnings.join('; ') || 'ok'} |`;
+        }),
+        '',
+    ];
+    appendFileSync(summaryPath, lines.join('\n'));
+}
+
 async function main() {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_KEY;
@@ -124,22 +178,29 @@ async function main() {
     const db = createClient(url, key);
     let totalFetched = 0;
 
+    const report: FeedReport[] = [];
+
     for (const source of SOURCES) {
+        const row: FeedReport = { name: source.name, entries: 0, dropped: 0, inserted: 0, newestIso: null, warnings: [] };
+        report.push(row);
         try {
             console.log(`Fetching ${source.name} (${source.rssUrl})...`);
             const entries = await parseRssFeed(source.rssUrl);
+            row.entries = entries.length;
+            row.newestIso = entries.reduce<string | null>((max, e) => (max && max > e.publishedAt ? max : e.publishedAt), null);
+
+            const relevant = source.mustMatch
+                ? entries.filter((e) => source.mustMatch!.test(e.text))
+                : entries;
+            row.dropped = entries.length - relevant.length;
+            row.warnings = feedWarnings({ ...row, maxQuietHours: source.maxQuietHours, now: new Date() });
 
             if (entries.length === 0) {
                 console.log(`  ${source.name}: 0 entries in feed`);
                 continue;
             }
-
-            const relevant = source.mustMatch
-                ? entries.filter((e) => source.mustMatch!.test(e.text))
-                : entries;
-            const droppedCount = entries.length - relevant.length;
-            if (droppedCount > 0) {
-                console.log(`  ${source.name}: dropped ${droppedCount} off-topic entries`);
+            if (row.dropped > 0) {
+                console.log(`  ${source.name}: dropped ${row.dropped} off-topic entries`);
             }
             if (relevant.length === 0) {
                 console.log(`  ${source.name}: 0 relevant entries in feed`);
@@ -171,14 +232,17 @@ async function main() {
             if (insErr) throw new Error(`Insert failed: ${insErr.message}`);
 
             totalFetched += rows.length;
+            row.inserted = rows.length;
             console.log(`  ${source.name}: ${rows.length} new posts`);
         } catch (err) {
             // Per-source failures must NOT halt the loop — a flaky rss.app endpoint
             // for one feed shouldn't block the others from ingesting.
             console.error(`  ${source.name}: FAILED -`, err);
+            row.warnings.push(`FAILED - ${err instanceof Error ? err.message : String(err)}`);
         }
     }
 
+    reportFeedHealth(report);
     console.log(`\nDone. Total new posts: ${totalFetched}`);
 }
 

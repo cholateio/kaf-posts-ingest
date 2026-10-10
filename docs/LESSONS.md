@@ -43,3 +43,10 @@
   PAT 打 workflow_dispatch API。
 - Rule: 需要準時或長期無人看管的排程不要用 GitHub `schedule:`,也不要「留著當備援」——
   它被停用時會把外部 dispatch 一起拖下水。
+
+### 2026-10-10 `gh run view --log` 對舊 run 回空字串,不是報錯
+- Context: 想確認某筆翻譯失敗是否每輪重現,對最近 30 次 run 逐一 `gh run view <id> --log | grep`。
+- Error: 只有最新一次有輸出,其餘全部 0 行、exit 0。據此誤判「該列從 9/27 起每輪失敗」;
+  改用 API 下載 zip 後才看到它只失敗一次、下一輪就成功。
+- Solution: `gh api repos/<owner>/<repo>/actions/runs/<id>/logs > l.zip` 再 unzip 讀。
+- Rule: 跨多次 run 查 log 一律下載 zip;空輸出先當成「工具沒拿到」,不是「log 裡沒有」。
