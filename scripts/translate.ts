@@ -22,6 +22,7 @@ import 'dotenv/config';
 
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
+import { stripNul } from './lib/stripNul';
 
 // gemini-2.5-flash returned 404 "no longer available to new users" from
 // 2026-07-15 onward, silently zeroing every run for 12 days. Pin the cheapest
@@ -265,7 +266,7 @@ async function main() {
     const usage: TokenUsage = { input: 0, output: 0 };
     for (const post of queue) {
         try {
-            const result = await callGemini(geminiKey, post.original_text, usage);
+            const result = stripNul(await callGemini(geminiKey, post.original_text, usage));
             const { error: updErr } = await db
                 .from('kaf_posts')
                 .update({
