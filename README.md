@@ -184,6 +184,51 @@ Row shape (`StreamRow` in `scripts/lib/youtube.ts`): `video_id`,
 `members_only`, `discovered_via`, `hashtags`, `updated_at`.
 
 The channel list `STREAM_CHANNEL_IDS` must stay in sync with
-`kaf-observatory/src/lib/schedule/roster.ts`; drift only costs
-tweet-discovered members-only streams. Needs `YOUTUBE_API_KEY` (GitHub secret
+`kaf-observatory/src/lib/schedule/roster.ts` — see "Adding a talent" below
+for what each side's drift costs. Needs `YOUTUBE_API_KEY` (GitHub secret
 + local `.env`), restricted to YouTube Data API v3 on the Google Cloud side.
+
+## Adding a talent
+
+A talent is defined by their YouTube channels; the X feed is optional. The
+channel list lives in **two repos** with nothing checking they agree, so do
+all steps in one sitting.
+
+1. **Collect the channel ids** (`UC…`): the main (music) channel and the
+   stream / membership channel if separate (e.g. 理芽 → RIM + STRANGE GIRL
+   CLUB). Verify each id before use:
+   `curl -s "https://www.youtube.com/feeds/videos.xml?channel_id=UC…" | grep -m1 '<title>'`
+   must print the expected channel name.
+2. **This repo** — append the ids to `STREAM_CHANNEL_IDS` in
+   `scripts/streams.ts`, with a `// name role` comment.
+3. **kaf-observatory** — add an entry to `TALENTS` in
+   `src/lib/schedule/roster.ts`: `id` (short ascii, becomes the
+   `feed_type` below), `name`, `shortName`, `color`, `aliases` (used to spot
+   the talent in other channels' titles and hashtags), and `channels` with
+   `role: "music" | "stream"`. A unit / project channel with no single owner
+   goes in `GROUP_CHANNELS` instead.
+4. **Optional, for members-only streams** — create an rss.app feed of the
+   talent's **main** X account (not `*_staff` / `*_info`; reasoning in
+   "Feed hygiene"), then add it to `SOURCES` in `scripts/fetch.ts`
+   (`feedType` = the roster `id`, `maxQuietHours: TIMELINE_QUIET_H`, extend
+   the `feedType` union) and to `TWEET_FEEDS` in `scripts/streams.ts`. Do
+   not add the new type to `FEED_PRIORITY` in `translate.ts` until the
+   Reader has a tab for it.
+5. **Verify**: run `pnpm run streams` (or dispatch the workflow) and check
+   the talent's rows appear in `kaf_streams`; then load `/schedule` and
+   confirm the cards carry the talent's name and colour.
+
+What a half-done addition looks like:
+
+| Done | Missing | Effect |
+| --- | --- | --- |
+| roster.ts | streams.ts | Public live streams appear (the web scans UULV itself every 10 min); tweet-found members-only streams never do. |
+| streams.ts | roster.ts | Rows reach the DB but render as host-less `OFFICIAL` cards — no name, no colour, cannot be muted — and only after the hourly ingest, since the web does not scan those channels. |
+| channels | X feed | Everything except members-only streams. |
+
+Budgets: rss.app Basic allows 15 feeds (8 in use as of 2026-10-10).
+YouTube Data API quota is 10,000 units/day per key; each channel costs this
+worker ~48/day (UULV + UULF via `playlistItems.list`, since GitHub runners
+are blocked from the RSS endpoint) and the observatory ~144/day (UULV every
+10 min), plus at most one `videos.list` unit per refresh on each side.
+13 channels put the worst case at roughly 3,300 units/day.
