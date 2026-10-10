@@ -36,7 +36,7 @@ forever, so that column alone is not a backlog count.
 | Source | Backing URL | Clean? |
 | --- | --- | --- |
 | KAF Official / KAF Info | account timelines | yes |
-| KAF Fan / KAFU | `x.com/search?q=…` | **no — ~10% off-topic** |
+| KAF Fan (×2) / KAFU | `x.com/search?q=…` | **no — ~10% off-topic** |
 | RIM / Harusaruhi / Isekaijoucho / CIEL | talent main-account timelines | yes |
 
 The talent feeds (`feed_type` = `rim` / `harusaruhi` / `isekaijoucho` /
@@ -56,7 +56,18 @@ matches (`@MatsuriCafu`). Measured against 5784 archived rows, 10% of fan and
 
 Search-backed sources therefore carry a `mustMatch` regex in `SOURCES`;
 entries failing it are dropped before insert and logged as
-`dropped N off-topic entries`. Account timelines have no gate.
+`dropped N off-topic entries`. The regex sees only the tweet body
+(`tweetBody.ts` strips rss.app's trailing `— @handle date` line), otherwise
+handles like `@KAFfeine_max` pass the gate. Account timelines have no gate.
+
+The fan search is ingested through **two** rss.app feeds of the same query:
+rss.app's default (X's Top tab) and one built with `f=live` (Latest). Two
+snapshots on 2026-10-10 showed each feed missing posts the other carried
+(10 of 28, then 6 of 31, inside the time window both covered), and the
+misses never showed up in later hourly runs — so neither feed alone is
+complete and swapping them would not help. Duplicates collapse on
+`external_id`; the extra feed costs one rss.app slot and ~10–15 fan
+translations a day against a 240/day cap.
 
 ## Translation priority
 
@@ -230,7 +241,7 @@ What a half-done addition looks like:
 | streams.ts | roster.ts | Rows reach the DB but render as host-less `OFFICIAL` cards — no name, no colour, cannot be muted — and only after the hourly ingest, since the web does not scan those channels. |
 | channels | X feed | Everything except members-only streams. |
 
-Budgets: rss.app Basic allows 15 feeds (8 in use as of 2026-10-10).
+Budgets: rss.app Basic allows 15 feeds (9 in use as of 2026-10-10).
 YouTube Data API quota is 10,000 units/day per key; each channel costs this
 worker ~48/day (UULV + UULF via `playlistItems.list`, since GitHub runners
 are blocked from the RSS endpoint) and the observatory ~144/day (UULV every

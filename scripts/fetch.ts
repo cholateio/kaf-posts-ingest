@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
 import { appendFileSync } from 'node:fs';
 import { feedWarnings } from './lib/feedHealth';
+import { tweetBody } from './lib/tweetBody';
 
 type MediaContent = { $: { url: string; medium?: string } };
 
@@ -41,7 +42,9 @@ interface Source {
      * 「花」の自筆譜` matches 花+譜) and the Top tab expands further. Measured
      * against 5784 archived rows: 10% of fan and 9% of kafu entries mention no
      * form of the subject at all, with zero legitimate posts caught by these
-     * patterns. Account timelines need no gate.
+     * patterns. Account timelines need no gate. Tested against the tweet body
+     * only (tweetBody.ts): the trailing "— @handle date" line would let
+     * @KAFfeine_max-style handles through (45/3358 archived fan rows).
      */
     mustMatch?: RegExp;
     /**
@@ -70,10 +73,21 @@ const SOURCES: Source[] = [
         rssUrl: 'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml',
         maxQuietHours: TIMELINE_QUIET_H,
     },
+    // Two wrappers of the same X search: rss.app's default (Top tab) and
+    // `f=live` (Latest). Snapshots 2026-10-10 showed each one missing posts
+    // the other had (10/28 and 6/31 within shared windows), and misses never
+    // arrived later. Duplicates collapse on external_id.
     {
         name: 'KAF Fan #KAF',
         feedType: 'fan',
         rssUrl: 'https://rss.app/feeds/sobCJ2ZL60gmrRKt.xml',
+        mustMatch: /花譜|kaf|カフ|可不/i,
+        maxQuietHours: 24,
+    },
+    {
+        name: 'KAF Fan #KAF (latest)',
+        feedType: 'fan',
+        rssUrl: 'https://rss.app/feeds/u9s6xz2Y3aj9qbFW.xml',
         mustMatch: /花譜|kaf|カフ|可不/i,
         maxQuietHours: 24,
     },
@@ -201,7 +215,7 @@ async function main() {
             row.newestIso = entries.reduce<string | null>((max, e) => (max && max > e.publishedAt ? max : e.publishedAt), null);
 
             const relevant = source.mustMatch
-                ? entries.filter((e) => source.mustMatch!.test(e.text))
+                ? entries.filter((e) => source.mustMatch!.test(tweetBody(e.text)))
                 : entries;
             row.dropped = entries.length - relevant.length;
             row.warnings = feedWarnings({ ...row, maxQuietHours: source.maxQuietHours, now: new Date() });

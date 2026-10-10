@@ -35,12 +35,12 @@ monthly_est = "$0"
 cancel = "與 kaf-observatory 共用同一後端,不可單獨停用,需一併評估"
 
 [[paid]]
-service = "rss.app"   # 8 個 X/Twitter feed(Basic 上限 15)
+service = "rss.app"   # 9 個 X/Twitter feed(Basic 上限 15)
 billing = "月費"
 # user 2026-07-11 確認;方案 feed 數不限。這是本專案唯一真正的固定支出——
 # 停掉 = fetch.ts 的 4 個 feed 一起失效,無備援來源。
 monthly_est = "NT$260/月"
-cancel = "rss.app 帳號後台取消訂閱;取消後 fetch.ts 的 8 個 feed 全部失效"
+cancel = "rss.app 帳號後台取消訂閱;取消後 fetch.ts 的 9 個 feed 全部失效"
 [[paid]]
 service = "Cloud Scheduler"   # GCP kaf-obs,job kaf-posts-ingest-hourly,每小時觸發 workflow_dispatch
 billing = "free-tier"        # 每帳單帳戶 3 個 job 免費,此處只用 1 個
