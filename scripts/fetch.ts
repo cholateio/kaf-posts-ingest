@@ -119,6 +119,7 @@ const SOURCES: Source[] = [
     { name: 'RIM', feedType: 'rim', rssUrl: 'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', maxQuietHours: TIMELINE_QUIET_H },
     { name: 'Harusaruhi', feedType: 'harusaruhi', rssUrl: 'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', maxQuietHours: TIMELINE_QUIET_H },
     { name: 'Isekaijoucho', feedType: 'isekaijoucho', rssUrl: 'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'Koko', feedType: 'koko', rssUrl: 'https://rss.app/feeds/TYDwRRSZFvrOQSxW.xml', maxQuietHours: TIMELINE_QUIET_H },
     { name: 'CIEL', feedType: 'ciel', rssUrl: 'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', maxQuietHours: TIMELINE_QUIET_H },
 ];
 

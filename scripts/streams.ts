@@ -44,6 +44,7 @@ export const TWEET_FEEDS: string[] = [
     'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', // @RIM_virtual
     'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', // @harusaruhi
     'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', // @isekaijoucho
+    'https://rss.app/feeds/TYDwRRSZFvrOQSxW.xml', // @KOKO__virtual
     'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', // @CIEL_VanillaSky
 ];
 
