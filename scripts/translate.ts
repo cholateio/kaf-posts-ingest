@@ -23,6 +23,7 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 import { stripNul } from './lib/stripNul';
+import { translateInput } from './lib/translateInput';
 
 // gemini-2.5-flash returned 404 "no longer available to new users" from
 // 2026-07-15 onward, silently zeroing every run for 12 days. Pin the cheapest
@@ -41,13 +42,7 @@ const PRICE_PER_M_INPUT = 0.3;
 const PRICE_PER_M_OUTPUT = 2.5;
 
 const MAX_TRANSLATIONS_PER_RUN = 10;
-const MIN_TEXT_LENGTH = 4;
 const GEMINI_TIMEOUT_MS = 30_000;
-
-// Hiragana, katakana, or CJK kanji. If none of these appear, the text is
-// almost certainly not Japanese (English RT, pure-emoji post, etc.) and
-// translation is a waste of tokens.
-const JAPANESE_RE = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/;
 
 const responseSchema: Schema = {
     type: SchemaType.OBJECT,
@@ -56,17 +51,6 @@ const responseSchema: Schema = {
             type: SchemaType.STRING,
             description:
                 'Traditional Chinese translation. MUST preserve the line break structure of the source — if the source has multiple lines separated by \\n, the translation must have the same number of lines separated by \\n in the corresponding positions.',
-        },
-        annotated: {
-            type: SchemaType.ARRAY,
-            items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    ruby: { type: SchemaType.STRING, description: 'Kanji text' },
-                    rt: { type: SchemaType.STRING, description: 'Furigana reading' },
-                    text: { type: SchemaType.STRING, description: 'Non-kanji text segment' },
-                },
-            },
         },
         vocabulary: {
             type: SchemaType.ARRAY,
@@ -92,20 +76,21 @@ const responseSchema: Schema = {
             },
         },
     },
-    required: ['translation', 'annotated', 'vocabulary', 'grammar'],
+    required: ['translation', 'vocabulary', 'grammar'],
 };
 
 const SYSTEM_PROMPT = `You are a Japanese-to-Traditional-Chinese translation assistant specialized in V-Singer and VTuber content.
 
 Given a Japanese tweet, return:
 1. "translation": A natural Traditional Chinese (zh-Hant) translation of the full text. CRITICAL: Preserve the line break structure of the source. If the source text contains \\n (line breaks) separating multiple lines or paragraphs, the translation MUST contain \\n in the corresponding positions so the rendered output mirrors the source's paragraph layout. Do not collapse multi-line input into a single line.
-2. "annotated": Break the original Japanese text into sequential segments. For segments containing kanji, provide "ruby" (the kanji text) and "rt" (the furigana reading). For segments without kanji (hiragana, katakana, punctuation, emoji, spaces), provide "text" with the literal characters. The concatenation of all ruby/text values must exactly reconstruct the original text.
-3. "vocabulary": Extract 5-8 key vocabulary words useful for a Traditional Chinese speaker learning Japanese. Each has "word" (dictionary form), "reading" (hiragana), "meaning" (Traditional Chinese). PRIORITIZE first: words with unexpected meanings (e.g. 大丈夫=沒問題), kun-yomi words (e.g. 楽しい, 嬉しい), verb conjugations (e.g. つづけてきた), words using kanji differently from Chinese (e.g. 勉強=學習), and katakana loanwords. DEPRIORITIZE (include only to reach 5, after the priority picks are exhausted): words where the kanji is identical in Chinese with the same meaning (e.g. 閉幕, 変化, 準備, 感謝) — these are obvious to Chinese readers but still useful for learners who need the Japanese reading. Aim for 5-8; only return fewer than 5 if the text genuinely lacks enough distinct words (very short tweet, mostly emoji). If the text has no parseable vocabulary (e.g., only emoji or ASCII), return an empty array.
-4. "grammar": Extract 1-3 key grammar patterns from the text. Each has "pattern" (the grammar pattern as used in the text, e.g. "〜してくれて") and "meaning" (explanation in Traditional Chinese, e.g. "為我做了〜（感恩語氣）"). Focus on conjugations, particles, sentence-ending forms, and connecting patterns that help learners understand sentence structure. If the text is too simple, return an empty array.`;
+2. "vocabulary": Extract 5-8 key vocabulary words useful for a Traditional Chinese speaker learning Japanese. Each has "word" (dictionary form), "reading" (hiragana), "meaning" (Traditional Chinese). PRIORITIZE first: words with unexpected meanings (e.g. 大丈夫=沒問題), kun-yomi words (e.g. 楽しい, 嬉しい), verb conjugations (e.g. つづけてきた), words using kanji differently from Chinese (e.g. 勉強=學習), and katakana loanwords. DEPRIORITIZE (include only to reach 5, after the priority picks are exhausted): words where the kanji is identical in Chinese with the same meaning (e.g. 閉幕, 変化, 準備, 感謝) — these are obvious to Chinese readers but still useful for learners who need the Japanese reading. Aim for 5-8; only return fewer than 5 if the text genuinely lacks enough distinct words (very short tweet, mostly emoji). If the text has no parseable vocabulary (e.g., only emoji or ASCII), return an empty array.
+3. "grammar": Extract 1-3 key grammar patterns from the text. Each has "pattern" (the grammar pattern as used in the text, e.g. "〜してくれて") and "meaning" (explanation in Traditional Chinese, e.g. "為我做了〜（感恩語氣）"). Focus on conjugations, particles, sentence-ending forms, and connecting patterns that help learners understand sentence structure. If the text is too simple, return an empty array.`;
 
+// `annotated` (furigana segments) was dropped from the schema 2026-10-10:
+// the Reader never rendered it (react-tweet owns the body DOM) and it was a
+// large share of output tokens. The kaf_posts column stays, null from now on.
 interface TranslationResult {
     translation: string;
-    annotated: Array<{ ruby?: string; rt?: string; text?: string }>;
     vocabulary: Array<{ word: string; reading: string; meaning: string }>;
     grammar: Array<{ pattern: string; meaning: string }>;
 }
@@ -115,52 +100,7 @@ interface PostRow {
     external_id: string;
     original_text: string;
 }
-
-function shouldSkip(text: string): boolean {
-    const trimmed = text.trim();
-    if (trimmed.length < MIN_TEXT_LENGTH) return true;
-    if (!JAPANESE_RE.test(trimmed)) return true;
-    return false;
-}
-
-/**
- * Strip the inlined quoted body from quote-tweet input before translation.
- *
- * rss.app inlines quoted tweets without any structural delimiter — they
- * just concatenate <originalText><QuotedDisplayName> (@<quotedHandle>)
- * <quotedBody>—  https://x.com/<quotedHandle>/status/<id>. The trailing
- * `/status/` URL is unique to quote tweets (the per-post attribution line
- * `— Name (@handle) date` has no path), so it doubles as a reliable
- * detector. RT-style retweets carry no /status/ URL in body and are
- * intentionally left intact — the user wants those translated in full.
- *
- * Only Gemini input is filtered; original_text in the DB stays untouched
- * so the frontend's existing quote-hide / jump-to-source UI keeps working.
- */
-function stripQuotedContent(text: string): string {
-    const quoteUrlRe = /—\s+https?:\/\/x\.com\/(\w+)\/status\/\d+/;
-    const match = quoteUrlRe.exec(text);
-    if (!match) return text;
-
-    const handle = match[1];
-    const handleMarker = `(@${handle})`;
-    const handlePos = text.indexOf(handleMarker);
-    if (handlePos === -1) return text;
-
-    // Walk back ≤30 chars to nearest \n or sentence-end glyph to also strip
-    // the display name preceding (@handle); rss.app gives no explicit
-    // delimiter so a bounded heuristic is the best signal we have.
-    let cutPos = handlePos;
-    for (let i = handlePos - 1; i >= 0 && handlePos - i < 30; i--) {
-        const ch = text[i];
-        if (ch === '\n' || /[。！？!?⟡♡♥]/.test(ch)) {
-            cutPos = i + 1;
-            break;
-        }
-    }
-
-    return text.substring(0, cutPos).trimEnd();
-}
+type QueuedPost = PostRow & { input: string };
 
 interface TokenUsage {
     input: number;
@@ -168,9 +108,8 @@ interface TokenUsage {
 }
 
 async function callGemini(geminiKey: string, text: string, usage: TokenUsage): Promise<TranslationResult> {
-    // Strip quoted content first (the detector relies on the embedded /status/
-    // URL still being present), then strip remaining URLs to save tokens.
-    const cleanText = stripQuotedContent(text).replace(/https?:\/\/\S+/g, '').trim();
+    // Quoted bodies are already gone (translateInput); drop URLs to save tokens.
+    const cleanText = text.replace(/https?:\/\/\S+/g, '').trim();
 
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({
@@ -226,7 +165,7 @@ async function main() {
     // filled — a lower tier only gets slots the tiers above it left unused.
     // Rows skipped by shouldSkip stay translation IS NULL forever, so each tier
     // pulls a buffer larger than the cap to keep that residue from starving it.
-    const queue: PostRow[] = [];
+    const queue: QueuedPost[] = [];
     const queuedBy: string[] = [];
 
     for (const feedType of FEED_PRIORITY) {
@@ -247,12 +186,29 @@ async function main() {
         }
 
         const before = queue.length;
+        const nothingToTranslate: string[] = [];
         for (const post of (candidates ?? []) as PostRow[]) {
             if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
-            if (shouldSkip(post.original_text)) continue;
-            queue.push(post);
+            const input = translateInput(post.original_text);
+            if (!input) {
+                nothingToTranslate.push(post.id);
+                continue;
+            }
+            queue.push({ ...post, input });
         }
         if (queue.length > before) queuedBy.push(`${feedType}:${queue.length - before}`);
+        // Terminal state for tag-only / non-Japanese rows: translation = ''.
+        // The Reader hides the panel for any falsy translation, and the row
+        // leaves the newest-50 NULL window instead of crowding it until an
+        // older retryable row can never be reached (codex review 2026-10-10).
+        if (nothingToTranslate.length) {
+            const { error: skipErr } = await db
+                .from('kaf_posts')
+                .update({ translation: '', vocabulary: [], grammar: [] })
+                .in('id', nothingToTranslate);
+            if (skipErr) console.error(`  mark not-translatable failed (${feedType}): ${skipErr.message}`);
+            else console.log(`  ${feedType}: marked ${nothingToTranslate.length} rows as nothing to translate`);
+        }
     }
 
     if (queue.length === 0) {
@@ -268,12 +224,11 @@ async function main() {
     const usage: TokenUsage = { input: 0, output: 0 };
     for (const post of queue) {
         try {
-            const result = stripNul(await callGemini(geminiKey, post.original_text, usage));
+            const result = stripNul(await callGemini(geminiKey, post.input, usage));
             const { error: updErr } = await db
                 .from('kaf_posts')
                 .update({
                     translation: result.translation,
-                    annotated: result.annotated,
                     vocabulary: result.vocabulary,
                     grammar: result.grammar,
                 })

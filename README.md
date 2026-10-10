@@ -91,9 +91,22 @@ original author's URL, so for them the retag path is what applies.
 above it left unused. The fan feed outproduces official ~25:1, so without
 this, official posts would sit behind a backlog of fan chatter.
 
+Before a row is queued, `translateInput.ts` strips rss.app's trailing
+`— Name (@handle) date` line (it was 30% of input characters and came back
+translated) and skips rows whose remaining text, minus links, hashtags and
+mentions, is under 4 characters or has no Japanese — `#花譜 #歌ってみた`-style
+posts, 82 of 1261 translations in the 30 days before 2026-10-10. Skipped
+rows get `translation = ''` (the Reader hides the panel for any falsy
+value) so they leave the `translation IS NULL` queue instead of crowding
+its newest-50 window. Gemini
+returns `translation`, `vocabulary` and `grammar`; the furigana `annotated`
+field was dropped from the schema the same day (the Reader never rendered
+it, and it was roughly half of the output tokens), so the column stays
+null for new rows.
+
 Each run logs its queue composition and billed token usage, e.g.
 `Translating 10 posts (capped at 10) — official:8, kafu:2` and
-`Done. Translated 10/10. Tokens: 5892 in / 4399 out ≈ US$0.0128`.
+`Done. Translated 10/10. Tokens: 4775 in / 2207 out ≈ US$0.0070`.
 
 ## Local dev
 
