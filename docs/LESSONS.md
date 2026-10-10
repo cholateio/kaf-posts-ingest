@@ -67,3 +67,15 @@
 - Solution: 無 focus 用 `review`;要指定範圍或做設計審查用 `adversarial-review --wait "<focus>"`,
   並把要審的文件 `git add -N` 讓它進 working tree diff。
 - Rule: 設計文件要給 codex 審,先 `git add -N` 再用 adversarial-review 帶 focus;別把 focus 塞給 review。
+
+### 2026-10-11 「不在集合 = 不可見」的新欄位要讓 DB 守住舊寫入端
+- Context: kaf_posts 加 `seen_in TEXT[]`（Reader 分頁改用包含篩選），ingest 與 observatory 分兩個 repo 部署
+- Error: 計畫初稿只靠「migration → ingest push → observatory push」的順序；codex 計畫審查連抓四輪：舊 ingest 插入 `'{}'` 的列會在所有分頁隱形、舊 retag 只改 feed_type、workflow disable 不會排空已 dispatch 的 run、abort 的 DROP COLUMN 被 `UPDATE OF` trigger 擋住
+- Solution: migration 內 `BEFORE INSERT OR UPDATE` trigger + `CHECK (seen_in @> ARRAY[feed_type])`；`gh workflow disable` 後用 `gh run list --workflow ingest.yml --status queued/in_progress` 排空（停用後顯示名稱解析不到，要用檔名）再 migrate；冪等清理 SQL 留在計畫 Task 7
+- Rule: 新增「集合外即不可見」語意的欄位時，DB 端 trigger／CHECK 守 owner 不變量，切換前排空寫入端，abort 程序逐物件寫清楚並限定適用時點；不靠部署順序
+
+### 2026-10-11 「已完成的 review」不涵蓋 reviewer 自己逼出的新分支
+- Context: 計畫審查 round 2 把 kafu 改成主題分頁（成員的可不推文留在 Kafu 分頁），但 translate.ts 只翻 owner 為 official/kafu/fan 的列
+- Error: 最終 codex review（observatory 側）：「Kafu 分頁可見的成員推文永遠不會被翻譯」——計畫的 Global Constraint「FEED_PRIORITY 不動」寫在 kafu 決定之前，沒人回頭重驗
+- Solution: translate tier 改用 `seen_in` 包含篩選 + 同輪去重（commit 見 reader-pipeline-review §5）
+- Rule: review 改了設計決定後，回頭掃計畫的 Global Constraints 與「刻意不做」清單，每條重問一次是否仍成立

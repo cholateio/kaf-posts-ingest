@@ -26,8 +26,8 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 
 ## File layout
 
-- `scripts/fetch.ts` — 抓 SOURCES 內 9 個 rss.app feed（花譜 2 帳號 + 3 搜尋 + 4 位成員主帳號），去重後 insert 進 `kaf_posts`
-- `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限）跑 Gemini，回寫翻譯欄位
+- `scripts/fetch.ts` — 抓 SOURCES 內 9 個 rss.app feed（花譜 2 帳號 + 3 搜尋 + 4 位成員主帳號），去重後 insert 進 `kaf_posts`；每個看到該列的 feed 把自己的歸屬併進 `seen_in`（`feedRank.memberships`），`feed_type` = rank 最高的 owner
+- `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限，tier 依 `seen_in` 包含 official/kafu/fan）跑 Gemini，回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 README「Streams」）
 - `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly` / `tweetBody` / `tweetAuthor` / `translateInput` / `feedRank` / `feedHealth` / `stripNul`）+ `__tests__/`
 - `.github/workflows/ingest.yml` — 唯一 CI workflow：workflow_dispatch（由 Cloud Scheduler 觸發）+ secrets

@@ -198,6 +198,12 @@ Agreed with codex: keep eager translation and the stored snapshot; drop
   under the talent's type and never add `fan` to `seen_in`; the Reader needs
   no account list. A talent's quote-tweet tagged #花譜 lands only in the
   talent's tab.
+  **Shipped 2026-10-11** (ingest 969a2e5 + c984a3c, observatory a788c79 +
+  faed061, migration 0008). Plan with the codex plan-review trail:
+  `docs/superpowers/plans/2026-10-11-multi-membership.md`. Two decisions
+  taken during review: the kafu search is topical (a talent's or official
+  可不 tweet keeps `kafu` membership, only the fan feeds are fans-only), and
+  the DB enforces `feed_type ∈ seen_in` (trigger + CHECK).
 - **Deleted tweets: never render stored text** (respect the author's
   removal). Candidate 7 killed; only the "still counts toward the 50-row
   cap" nit remains, low priority.
