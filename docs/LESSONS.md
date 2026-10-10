@@ -50,3 +50,20 @@
   改用 API 下載 zip 後才看到它只失敗一次、下一輪就成功。
 - Solution: `gh api repos/<owner>/<repo>/actions/runs/<id>/logs > l.zip` 再 unzip 讀。
 - Rule: 跨多次 run 查 log 一律下載 zip;空輸出先當成「工具沒拿到」,不是「log 裡沒有」。
+
+### 2026-10-10 rss.app 把轉推連到原文網址,多 feed 共用 external_id 時「先寫者贏」會錯分官方貼文
+- Context: 花譜〈散歩の邪魔〉翻唱推文沒出現在 Reader 的 KAF 分頁;官方 feed log 寫 `25 already exist`。
+- Error: 粉絲搜尋 feed 比官方 feed 早一輪刷新,先以 feed_type=fan 寫入;官方 feed 只用
+  external_id 判存在就跳過。封存資料中另有 4 則官方推文同樣錯分,最早 8 月。
+- Solution: feedRank.ts 優先序 official > 成員 > kafu > fan,高的 feed 遇到低的先寫的列就改
+  feed_type;搜尋 feed 抓到官方帳號本人推文直接存 official(作者從網址讀)。
+- Rule: 多個來源寫同一張表、以 URL 去重時,「已存在」不等於「分類正確」——存在檢查要連分類
+  一起比,且要先定義來源優先序。
+
+### 2026-10-10 codex `review` 不收 focus 文字,`adversarial-review` 才收
+- Context: 想讓 codex 針對特定檔案或設計問題審;`/kit-review` 走 companion script `review`。
+- Error: `review --wait "<focus>"` 立刻 exit 1:「now maps directly to the built-in reviewer and does
+  not support custom focus text. Retry with /codex:adversarial-review Focus: …」。
+- Solution: 無 focus 用 `review`;要指定範圍或做設計審查用 `adversarial-review --wait "<focus>"`,
+  並把要審的文件 `git add -N` 讓它進 working tree diff。
+- Rule: 設計文件要給 codex 審,先 `git add -N` 再用 adversarial-review 帶 focus;別把 focus 塞給 review。

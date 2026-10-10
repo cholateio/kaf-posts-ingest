@@ -25,7 +25,8 @@ billing = "按用量"
 # Scheduler 每小時 24 輪,2026-10-09 起;之前 GitHub cron 約 12 輪 → 120 筆)→ US$13/月,
 # 這是帳單硬上限;MAX_TRANSLATIONS_PER_RUN 就是熔斷器,調高它等於調高上限。
 # log 已會印每輪實際金額,累積幾天後可直接加總取代上面的推估。尚未對過真實帳單。
-monthly_est = "US$3-4/月(實測校準,未對帳單)"
+# 2026-10-10:schema 拿掉 annotated(Reader 沒用),同 10 筆 out 4399→2207 token;署名行與 tag-only 貼文不再送,量少 6.5%。
+monthly_est = "US$2-3/月(2026-10-10 停產 annotated 後輸出減半,未對帳單)"
 cancel = "移除 GitHub Actions repo secrets 的 GEMINI_API_KEY 即停,worker 每輪硬上限 10 筆翻譯"
 
 [[paid]]
