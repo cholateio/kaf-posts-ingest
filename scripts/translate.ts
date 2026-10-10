@@ -4,7 +4,7 @@
  * same row (single-table model — no XTranslations).
  *
  * Skip rules:
- *   - Non-Japanese text (no kana / kanji) → skip; nothing useful to translate.
+ *   - Non-Japanese text (no kana; Chinese and kanji-only titles count) → skip.
  *   - Empty / very short text             → skip; would just burn tokens.
  *
  * Per-run hard cap (`MAX_TRANSLATIONS_PER_RUN`) is the cost circuit-breaker:

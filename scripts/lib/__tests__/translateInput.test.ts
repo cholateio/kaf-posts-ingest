@@ -12,6 +12,17 @@ describe('translateInput', () => {
         expect(translateInput('Need some penlights for OffKai LIVE tonight? — @offkai Jul 26, 2026')).toBeNull();
         expect(translateInput('最高 — @fan Aug 1, 2026')).toBeNull();
     });
+    it('skips Chinese posts: kanji without any kana is not Japanese (they came back translated into Japanese)', () => {
+        expect(translateInput('很喜欢的曲，但不知道为什么MV封面看起来像这个\n【官方投稿】踩到猫了。feat.可不 — @RavenKun0305 Oct 11, 2026')).toBeNull();
+        expect(translateInput('花譜KAF🎤8周年應援公車 — @fan Oct 1, 2026')).toBeNull();
+    });
+    it('skips kanji-only Japanese titles too; a translation would just repeat them', () => {
+        expect(translateInput('🌸花譜 3D衣装 & 三面図公開🌸 — 花譜-KAF- (@virtual_kaf) Oct 1, 2026')).toBeNull();
+    });
+    it('keeps Japanese with kana, including katakana-only prose', () => {
+        expect(translateInput('新曲のMVが公開されました — @fan Oct 10, 2026')).toBe('新曲のMVが公開されました');
+        expect(translateInput('ライブ グッズ ラインナップ — @fan Oct 10, 2026')).toBe('ライブ グッズ ラインナップ');
+    });
     it('a hashtag ends at punctuation, so prose after it still counts', () => {
         expect(translateInput('#花譜、今日のライブ最高だった — @fan Oct 10, 2026')).toBe('#花譜、今日のライブ最高だった');
     });

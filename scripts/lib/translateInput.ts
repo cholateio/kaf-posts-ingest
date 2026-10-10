@@ -1,9 +1,11 @@
 import { tweetBody } from './tweetBody';
 
-// Hiragana, katakana, or CJK kanji. If none of these appear, the text is
-// almost certainly not Japanese (English RT, pure-emoji post, etc.) and
-// translation is a waste of tokens.
-const JAPANESE_RE = /[぀-ゟ゠-ヿ一-鿿]/;
+// Hiragana or katakana. Kanji alone does not make a post Japanese: Chinese
+// fan posts passed a kanji test and Gemini, told its input is Japanese,
+// returned them translated into Japanese (2026-10-11). The kanji-only
+// Japanese it also drops are titles and names (花譜, 輪廻, 三面図公開)
+// whose translation repeats the source — 39 of 1285 rows in 30 days.
+const JAPANESE_RE = /[぀-ゟ゠-ヿ]/;
 const MIN_CORE_CHARS = 4;
 
 // What is left once links, hashtags, mentions, whitespace, punctuation and
