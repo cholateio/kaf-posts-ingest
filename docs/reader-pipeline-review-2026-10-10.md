@@ -192,6 +192,12 @@ Agreed with codex: keep eager translation and the stored snapshot; drop
   to the original URL). Model: `seen_in TEXT[]` of feeds that saw the row;
   tabs filter by containment; "retweeted" badge derived from author ≠ the
   tab's account, not from the title prefix. Prerequisite for talent tabs.
+  Addendum 2026-10-11: **the fan tab excludes tweets authored by official or
+  talent accounts** ("fan = fans"). Implemented at ingest by extending
+  `authorFeedType` with the talent handles, so the search feeds file those
+  under the talent's type and never add `fan` to `seen_in`; the Reader needs
+  no account list. A talent's quote-tweet tagged #花譜 lands only in the
+  talent's tab.
 - **Deleted tweets: never render stored text** (respect the author's
   removal). Candidate 7 killed; only the "still counts toward the 50-row
   cap" nit remains, low priority.
