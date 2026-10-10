@@ -32,9 +32,12 @@ import { translateInput } from './lib/translateInput';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 // Drain order for the translation queue: official posts must never wait behind
-// the fan feed, which outproduces them ~25:1. Talent feed types (rim, …) are
-// deliberately absent: the Reader has no tab for them yet, so translating
-// them would only spend Gemini tokens (decision 2026-10-10).
+// the fan feed, which outproduces them ~25:1. Each tier is a Reader tab and
+// matches on seen_in membership, not the owning feed_type: a talent's tweet
+// about 可不 is owned by the talent but shown in the Kafu tab, so it must be
+// translated (codex review 2026-10-11). Talent tabs (rim, …) are deliberately
+// absent: the Reader has none yet, so translating rows seen only there would
+// only spend Gemini tokens (decision 2026-10-10).
 const FEED_PRIORITY = ['official', 'kafu', 'fan'] as const;
 
 // Paid-tier USD per 1M tokens for GEMINI_MODEL — update both together.
@@ -166,6 +169,7 @@ async function main() {
     // Rows skipped by shouldSkip stay translation IS NULL forever, so each tier
     // pulls a buffer larger than the cap to keep that residue from starving it.
     const queue: QueuedPost[] = [];
+    const queuedIds = new Set<string>();
     const queuedBy: string[] = [];
 
     for (const feedType of FEED_PRIORITY) {
@@ -176,7 +180,7 @@ async function main() {
             .select('id, external_id, original_text')
             .is('translation', null)
             .eq('source_type', 'x')
-            .eq('feed_type', feedType)
+            .contains('seen_in', [feedType])
             .order('published_at', { ascending: false })
             .limit(MAX_TRANSLATIONS_PER_RUN * 5);
 
@@ -189,6 +193,9 @@ async function main() {
         const nothingToTranslate: string[] = [];
         for (const post of (candidates ?? []) as PostRow[]) {
             if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
+            // A row in two tabs (official tweet about 可不) is a candidate twice.
+            if (queuedIds.has(post.id)) continue;
+            queuedIds.add(post.id);
             const input = translateInput(post.original_text);
             if (!input) {
                 nothingToTranslate.push(post.id);
