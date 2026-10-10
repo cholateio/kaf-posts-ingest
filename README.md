@@ -69,6 +69,16 @@ complete and swapping them would not help. Duplicates collapse on
 `external_id`; the extra feed costs one rss.app slot and ~10–15 fan
 translations a day against a 240/day cap.
 
+One tweet can sit in several feeds — the fan search finds 花譜's own
+tweets, and the official accounts retweet others — but `kaf_posts` keeps
+one row per `external_id`. The row belongs to the most authoritative feed
+that has seen it (`feedRank.ts`: official > talent accounts > kafu > fan):
+when a higher feed meets a row a lower one stored first, `fetch.ts` retags
+it (`retagged N rows to official`, and the `retagged` column of the job
+summary). Without this, whichever feed rss.app refreshed first won, and a
+new cover tweet sat in the fan tab (2026-10-10). Worst case now: an official
+tweet shows under the fan tab until the next hourly run.
+
 ## Translation priority
 
 `translate.ts` fills each run's queue by `feed_type` in order —

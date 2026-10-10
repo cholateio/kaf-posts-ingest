@@ -16,6 +16,7 @@ import Parser from 'rss-parser';
 import { appendFileSync } from 'node:fs';
 import { feedWarnings } from './lib/feedHealth';
 import { tweetBody } from './lib/tweetBody';
+import { idsToRetag, type FeedType } from './lib/feedRank';
 
 type MediaContent = { $: { url: string; medium?: string } };
 
@@ -31,7 +32,7 @@ interface Source {
     // Talent ids match kaf-observatory/src/lib/schedule/roster.ts so a Reader
     // tab per talent can key on them later. Only official/fan/kafu have tabs
     // (and translation) today; talent rows exist for streams.ts.
-    feedType: 'official' | 'fan' | 'kafu' | 'rim' | 'harusaruhi' | 'isekaijoucho' | 'ciel';
+    feedType: FeedType;
     rssUrl: string;
     /**
      * Relevance gate for search-backed feeds only.
@@ -165,6 +166,7 @@ interface FeedReport {
     entries: number;
     dropped: number;
     inserted: number;
+    retagged: number;
     newestIso: string | null;
     warnings: string[];
 }
@@ -181,11 +183,11 @@ function reportFeedHealth(report: FeedReport[]) {
     const now = Date.now();
     const lines = [
         '### Feeds',
-        '| feed | entries | dropped | new | newest | warnings |',
-        '| --- | --: | --: | --: | --: | --- |',
+        '| feed | entries | dropped | new | retagged | newest | warnings |',
+        '| --- | --: | --: | --: | --: | --: | --- |',
         ...report.map((r) => {
             const age = r.newestIso ? `${Math.floor((now - Date.parse(r.newestIso)) / 3600_000)}h ago` : '-';
-            return `| ${r.name} | ${r.entries} | ${r.dropped} | ${r.inserted} | ${age} | ${r.warnings.join('; ') || 'ok'} |`;
+            return `| ${r.name} | ${r.entries} | ${r.dropped} | ${r.inserted} | ${r.retagged} | ${age} | ${r.warnings.join('; ') || 'ok'} |`;
         }),
         '',
     ];
@@ -206,7 +208,7 @@ async function main() {
     const report: FeedReport[] = [];
 
     for (const source of SOURCES) {
-        const row: FeedReport = { name: source.name, entries: 0, dropped: 0, inserted: 0, newestIso: null, warnings: [] };
+        const row: FeedReport = { name: source.name, entries: 0, dropped: 0, inserted: 0, retagged: 0, newestIso: null, warnings: [] };
         report.push(row);
         try {
             console.log(`Fetching ${source.name} (${source.rssUrl})...`);
@@ -233,7 +235,19 @@ async function main() {
             }
 
             const externalIds = relevant.map((e) => e.externalId);
-            const { data: existing } = await db.from('kaf_posts').select('external_id').in('external_id', externalIds);
+            const { data: existing, error: exErr } = await db
+                .from('kaf_posts')
+                .select('external_id, feed_type')
+                .in('external_id', externalIds);
+            if (exErr) throw new Error(`Select existing failed: ${exErr.message}`);
+
+            const retag = idsToRetag(source.feedType, existing ?? []);
+            if (retag.length) {
+                const { error: rtErr } = await db.from('kaf_posts').update({ feed_type: source.feedType }).in('external_id', retag);
+                if (rtErr) throw new Error(`Retag failed: ${rtErr.message}`);
+                row.retagged = retag.length;
+                console.log(`  ${source.name}: retagged ${retag.length} rows to ${source.feedType}`);
+            }
 
             const existingIds = new Set((existing ?? []).map((p: { external_id: string }) => p.external_id));
             const newEntries = relevant.filter((e) => !existingIds.has(e.externalId));
