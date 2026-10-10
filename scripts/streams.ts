@@ -34,8 +34,12 @@ export const STREAM_CHANNEL_IDS: string[] = [
 
 // rss.app tweet feeds scanned for youtube links only; nothing is written to
 // kaf_posts from here (that would leak into the Reader's "all" tab).
-// Keep in sync with fetch.ts SOURCES (same rss.app feeds).
+// Keep in sync with fetch.ts SOURCES (same rss.app feeds). Official and
+// talent accounts only: a live/premiere they link on an off-roster channel is
+// stored as a guest appearance (assembleRows.ts), so a fan/search feed here
+// would turn every linked stream into an event.
 export const TWEET_FEEDS: string[] = [
+    'https://rss.app/feeds/TrZl0i4ipQm1dz7k.xml', // @virtual_kaf
     'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml', // @kaf_info
     'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', // @RIM_virtual
     'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', // @harusaruhi

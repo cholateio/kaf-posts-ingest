@@ -26,8 +26,13 @@ export function assembleRows({ newIds, discovered, stale, items, allowed, now }:
     for (const id of newIds) {
         const item = items.get(id);
         if (!item) continue;
-        if (!allowed.has(item.snippet.channelId)) continue; // guest appearance on a non-roster channel: v2
         const d = discovered.get(id);
+        // Off-roster channel: kept only as a guest appearance, i.e. a timed
+        // event (live/premiere) linked from an official/talent tweet. Plain
+        // uploads are dropped — talents retweet other people's MVs and covers,
+        // and those are not events. The web's classify.ts attributes such a
+        // row to whichever talents its title/hashtags name.
+        if (!allowed.has(item.snippet.channelId) && !(d?.via === 'tweet' && item.liveStreamingDetails)) continue;
         const membersOnly = (d?.membersOnly ?? false) || MEMBERS_ONLY_RE.test(item.snippet.title);
         rows.push(toStreamRow(item, d?.via ?? 'rss_uploads', membersOnly, now));
     }

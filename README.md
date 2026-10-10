@@ -167,14 +167,18 @@ same day.
    playlists — RSS first (keyless), falling back to `playlistItems.list`
    (1 quota unit) because GitHub runners get 404/500 from the RSS endpoints
    (observed 2026-10-09, IP-based);
-2. scans the `TWEET_FEEDS` rss.app feeds (@kaf_info plus the talent main
-   accounts, same feeds as `fetch.ts`) for YouTube links (`extractVideoIds`,
-   full 11-char ids only); `members_only` comes from the text following each
-   link (メンバーシップ限定 / メン限 / membership) or from the video title —
-   the Data API has no such flag;
+2. scans the `TWEET_FEEDS` rss.app feeds (@virtual_kaf, @kaf_info plus the
+   talent main accounts, same feeds as `fetch.ts`) for YouTube links
+   (`extractVideoIds`, full 11-char ids only); `members_only` comes from the
+   text following each link (メンバーシップ限定 / メン限 / membership) or
+   from the video title — the Data API has no such flag;
 3. looks up new ids plus stale `upcoming`/`live` rows (≤50, older than 30 min)
    with one `videos.list` call per 50 ids (1 quota unit each);
-4. upserts on `video_id`. Nothing is written to `kaf_posts`.
+4. keeps a video on an off-roster channel only when a tweet linked it **and**
+   it is a live/premiere (`assembleRows.ts`) — a guest appearance on another
+   VTuber's channel. Retweeted MVs and covers on other channels are dropped.
+   Non-YouTube appearances (NHK radio, TV, niconico) are out of scope here;
+5. upserts on `video_id`. Nothing is written to `kaf_posts`.
 
 It runs as the last step of `ingest.yml` with `continue-on-error: true`, so
 a YouTube quota or key problem shows up as a yellow step, not a red run.

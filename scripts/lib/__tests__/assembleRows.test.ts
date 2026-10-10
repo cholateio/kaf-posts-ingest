@@ -39,10 +39,28 @@ describe('assembleRows', () => {
         expect(gone.published_at).toBe('2026-09-01T00:00:00Z');
         expect(rows.find((r) => r.video_id === 'still000001')!.status).toBe('published');
     });
-    it('drops new videos hosted on a non-roster channel', () => {
+    it('drops a plain upload on a non-roster channel even when a tweet linked it', () => {
         const rows = assembleRows({
             newIds: ['guest000001'], discovered: new Map([['guest000001', { via: 'tweet', membersOnly: false }]]),
             stale: [], items: new Map([['guest000001', item('guest000001', 'UCsomeoneelse00000000000')]]), allowed: ROSTER, now: NOW,
+        });
+        expect(rows).toEqual([]);
+    });
+    it('keeps a tweet-linked live/premiere on a non-roster channel (guest appearance)', () => {
+        const guest = item('guest000002', 'UCsomeoneelse00000000000');
+        guest.liveStreamingDetails = { scheduledStartTime: '2026-10-11T12:00:00Z' };
+        const rows = assembleRows({
+            newIds: ['guest000002'], discovered: new Map([['guest000002', { via: 'tweet', membersOnly: false }]]),
+            stale: [], items: new Map([['guest000002', guest]]), allowed: ROSTER, now: NOW,
+        });
+        expect(rows.map((r) => [r.video_id, r.channel_id, r.status])).toEqual([['guest000002', 'UCsomeoneelse00000000000', 'upcoming']]);
+    });
+    it('drops a non-roster live that no tweet linked', () => {
+        const guest = item('guest000003', 'UCsomeoneelse00000000000');
+        guest.liveStreamingDetails = { scheduledStartTime: '2026-10-11T12:00:00Z' };
+        const rows = assembleRows({
+            newIds: ['guest000003'], discovered: new Map([['guest000003', { via: 'rss_live', membersOnly: false }]]),
+            stale: [], items: new Map([['guest000003', guest]]), allowed: ROSTER, now: NOW,
         });
         expect(rows).toEqual([]);
     });
