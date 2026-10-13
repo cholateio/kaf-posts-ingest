@@ -32,17 +32,6 @@ export const STREAM_CHANNEL_IDS: string[] = [
     'UCRvkXFtB70ZADg4L6A8L3wQ', // CIEL (single channel)
     'UCBLGjbYv6-xxju1i44RjnnA', // 明透 music
     'UCfzP3R8QQ77ryTnHeEiBVMw', // 明透 CLEAR ASU (stream)
-    'UCO6mA1hC3Gv9jEoCTITjAQw', // 琶舞 music
-    'UCPH0ZS-AGZbt2JC51qFGrkw', // 琶舞 BEMA HOLIC (stream)
-    'UCJxwvbBoawRJtVgPgvMg-Qg', // 空爽 (unit: CIEL + Sooda)
-    'UCRYh9eOSnwcT6aftSf8hYUw', // Sooda (single channel)
-    'UCHIgbtz8t8snEwWlE1eyS2g', // 少女革命計画 (project)
-    'UC0w13AZfaxfatdHdF-bhN3Q', // 佳鏡院 (心世紀)
-    'UCPzB4ROWho13wC9ngTCz1hA', // 御莉姫 (心世紀)
-    'UCzArdRlyB498Ksl8BIiD6ZA', // 硝子宮 (心世紀)
-    'UC1GH6W6CzBUCR_3oHegiBGw', // 美古途 (罪十罰)
-    'UC9tOWVNzMaXDD5SxKP1zAug', // 夕凪機 (罪十罰)
-    'UCTZyqEU7dSXbc4b-NBolgMg', // 氷夏至 (罪十罰)
 ];
 
 // rss.app tweet feeds scanned for youtube links only; nothing is written to
