@@ -89,6 +89,10 @@ const SOURCES: Source[] = [
     // `f=live` (Latest). Snapshots 2026-10-10 showed each one missing posts
     // the other had (10/28 and 6/31 within shared windows), and misses never
     // arrived later. Duplicates collapse on external_id.
+    // 2026-10-13, 57 runs: Latest first-saw 316 posts, Top 78 (Top runs
+    // first, so most of its 78 Latest also had). Latest is the backbone; it
+    // overflows in bursts (25 items spanned 19 min on 10-12) and the gaps it
+    // leaves are where Top's only clearly unique posts fall. Drop Top first.
     {
         name: 'KAF Fan #KAF',
         feedType: 'fan',

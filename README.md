@@ -272,7 +272,7 @@ What a half-done addition looks like:
 | streams.ts | roster.ts | Rows reach the DB but render as host-less `OFFICIAL` cards — no name, no colour, cannot be muted — and only after the hourly ingest, since the web does not scan those channels. |
 | channels | X feed | Everything except members-only streams. |
 
-Budgets: rss.app Basic allows 15 feeds (9 in use as of 2026-10-10).
+Budgets: rss.app Basic allows 15 feeds (11 in use as of 2026-10-13).
 YouTube Data API quota is 10,000 units/day per key; each channel costs this
 worker ~48/day (UULV + UULF via `playlistItems.list`, since GitHub runners
 are blocked from the RSS endpoint) and the observatory ~144/day (UULV every

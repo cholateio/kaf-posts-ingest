@@ -79,3 +79,9 @@
 - Error: 最終 codex review（observatory 側）：「Kafu 分頁可見的成員推文永遠不會被翻譯」——計畫的 Global Constraint「FEED_PRIORITY 不動」寫在 kafu 決定之前，沒人回頭重驗
 - Solution: translate tier 改用 `seen_in` 包含篩選 + 同輪去重（commit 見 reader-pipeline-review §5）
 - Rule: review 改了設計決定後，回頭掃計畫的 Global Constraints 與「刻意不做」清單，每條重問一次是否仍成立
+
+### 2026-10-13 `gh run view --log` 平行跑會靜默回空檔
+- Context: 為比較兩個 fan feed,用 `xargs -P 8 gh run view <id> --log` 下載 57 輪 ingest log。
+- Error: 56 個檔案 0 byte、exit 0、沒有錯誤訊息;改成逐一執行也一樣是空的,只有 1 個有內容。
+- Solution: 改走 jobs API:`gh api repos/{owner}/{repo}/actions/runs/<id>/jobs --jq '.jobs[0].id'` 取 job id,再 `gh api .../actions/jobs/<job>/logs`,57 個全拿到。
+- Rule: 批次抓 Actions log 一律用 jobs API,並在解析前先 `wc -c` 檢查有沒有空檔。
