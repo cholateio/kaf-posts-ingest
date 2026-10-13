@@ -39,10 +39,17 @@ describe('assembleRows', () => {
         expect(gone.published_at).toBe('2026-09-01T00:00:00Z');
         expect(rows.find((r) => r.video_id === 'still000001')!.status).toBe('published');
     });
-    it('drops a plain upload on a non-roster channel even when a tweet linked it', () => {
+    it('keeps a tweet-linked plain upload on a non-roster channel (feat. guest, MIMI R0b-kJSwUxY 2026-10-11); the web decides display', () => {
         const rows = assembleRows({
             newIds: ['guest000001'], discovered: new Map([['guest000001', { via: 'tweet', membersOnly: false }]]),
             stale: [], items: new Map([['guest000001', item('guest000001', 'UCsomeoneelse00000000000')]]), allowed: ROSTER, now: NOW,
+        });
+        expect(rows.map((r) => [r.video_id, r.discovered_via, r.status])).toEqual([['guest000001', 'tweet', 'published']]);
+    });
+    it('drops a plain upload on a non-roster channel that only RSS found', () => {
+        const rows = assembleRows({
+            newIds: ['guest000009'], discovered: new Map([['guest000009', { via: 'rss_uploads', membersOnly: false }]]),
+            stale: [], items: new Map([['guest000009', item('guest000009', 'UCsomeoneelse00000000000')]]), allowed: ROSTER, now: NOW,
         });
         expect(rows).toEqual([]);
     });

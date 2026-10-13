@@ -27,12 +27,12 @@ export function assembleRows({ newIds, discovered, stale, items, allowed, now }:
         const item = items.get(id);
         if (!item) continue;
         const d = discovered.get(id);
-        // Off-roster channel: kept only as a guest appearance, i.e. a timed
-        // event (live/premiere) linked from an official/talent tweet. Plain
-        // uploads are dropped — talents retweet other people's MVs and covers,
-        // and those are not events. The web's classify.ts attributes such a
-        // row to whichever talents its title/hashtags name.
-        if (!allowed.has(item.snippet.channelId) && !(d?.via === 'tweet' && item.liveStreamingDetails)) continue;
+        // Off-roster channel: kept only when an official/talent tweet linked
+        // it — a guest live/premiere, or a feat. upload (MIMI『風の名前』feat.
+        // ヰ世界情緒, 2026-10-11). Retweeted MVs land here too; the web's
+        // classify.ts shows an off-roster upload only when its title/hashtags
+        // name a talent, and attributes it to them.
+        if (!allowed.has(item.snippet.channelId) && d?.via !== 'tweet') continue;
         const membersOnly = (d?.membersOnly ?? false) || MEMBERS_ONLY_RE.test(item.snippet.title);
         rows.push(toStreamRow(item, d?.via ?? 'rss_uploads', membersOnly, now));
     }
