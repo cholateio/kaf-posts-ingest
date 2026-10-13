@@ -249,7 +249,10 @@ all steps in one sitting.
    `feed_type` below), `name`, `shortName`, `color`, `aliases` (used to spot
    the talent in other channels' titles and hashtags), and `channels` with
    `role: "music" | "stream"`. A unit / project channel with no single owner
-   goes in `GROUP_CHANNELS` instead.
+   goes in `GROUP_CHANNELS` instead. To share one chip between a unit and its
+   members (空爽 = unit + CIEL + Sooda), give the unit channel its own
+   `Talent`, list all their ids in one `CHIP_GROUPS` entry, and give every
+   member the group's `color`.
 4. **Optional, for members-only streams** — create an rss.app feed of the
    talent's **main** X account (not `*_staff` / `*_info`; reasoning in
    "Feed hygiene"), then add it to `SOURCES` in `scripts/fetch.ts`
@@ -274,4 +277,6 @@ YouTube Data API quota is 10,000 units/day per key; each channel costs this
 worker ~48/day (UULV + UULF via `playlistItems.list`, since GitHub runners
 are blocked from the RSS endpoint) and the observatory ~144/day (UULV every
 10 min), plus at most one `videos.list` unit per refresh on each side.
-13 channels put the worst case at roughly 3,300 units/day.
+26 channels (as of 2026-10-13) put the worst case at roughly 5,700
+units/day — about 20 more channels fit; past that the web side needs a
+longer cache window before any are added.
