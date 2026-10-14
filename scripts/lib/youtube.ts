@@ -68,8 +68,12 @@ export function toStreamRow(item: YtVideoItem, discoveredVia: DiscoveredVia, mem
     else if (lsd.actualEndTime) status = 'ended';
     else if (lsd.actualStartTime) status = 'live';
     else status = 'upcoming';
+    // Before it airs, a premiere's contentDetails carries NO duration key; an
+    // upcoming live stream reports 'P0D' (videos.list, 2026-10-14). Mirrored
+    // in kaf-observatory/src/lib/schedule/server/youtube.ts.
+    const noDuration = item.contentDetails?.duration === undefined;
     const isPremiere =
-        !!lsd && (status === 'ended' ? durationS > 0 && durationS <= PREMIERE_MAX_SECONDS : durationS > 0);
+        !!lsd && (status === 'ended' ? durationS > 0 && durationS <= PREMIERE_MAX_SECONDS : noDuration || durationS > 0);
     return {
         video_id: item.id,
         channel_id: item.snippet.channelId,

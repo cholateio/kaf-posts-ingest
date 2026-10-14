@@ -32,6 +32,19 @@ describe('toStreamRow status derivation', () => {
         expect(row.status).toBe('upcoming');
         expect(row.is_premiere).toBe(true);
     });
+    // Real videos.list shape (2026-10-14, nUwewQhWBIw / J63aZNuoRek): an
+    // upcoming premiere has contentDetails with NO duration key, while an
+    // upcoming live stream reports 'P0D'.
+    it('upcoming + premiere when contentDetails has no duration', () => {
+        const row = toStreamRow(base({ id: 'e'.repeat(11), snippet: { channelId: 'c', title: '春猿火 # 67「HOLIC」【Official Music Video】', publishedAt: '2026-10-11T19:08:22Z', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: '2026-10-14T11:00:00Z' }, contentDetails: {} }), 'rss_uploads', false, NOW);
+        expect(row.status).toBe('upcoming');
+        expect(row.is_premiere).toBe(true);
+    });
+    it('upcoming live stream (P0D) is not a premiere', () => {
+        const row = toStreamRow(base({ id: 'f'.repeat(11), snippet: { channelId: 'c', title: '【雑談】x', publishedAt: '2026-10-13T06:07:53Z', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: '2026-10-14T11:00:00Z' }, contentDetails: { duration: 'P0D' } }), 'rss_live', false, NOW);
+        expect(row.status).toBe('upcoming');
+        expect(row.is_premiere).toBe(false);
+    });
     it('published when no liveStreamingDetails', () => {
         const row = toStreamRow(base({ id: 'd'.repeat(11), contentDetails: { duration: 'PT3M' } }), 'rss_uploads', false, NOW);
         expect(row.status).toBe('published');
