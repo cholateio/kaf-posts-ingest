@@ -20,10 +20,13 @@ before first ingest if they don't exist yet):
 ```sql
 ALTER TABLE kaf_posts
   ADD COLUMN translation TEXT,
-  ADD COLUMN annotated   JSONB,
   ADD COLUMN vocabulary  JSONB,
   ADD COLUMN grammar     JSONB;
 ```
+
+Retention: only tweets published from 2026-10-01 00:00 Taiwan time are
+kept (older rows were deleted 2026-10-14). `scripts/lib/retention.ts`
+holds that floor so `fetch.ts` never re-inserts them from the feeds.
 
 A post is considered "translated" iff `translation IS NOT NULL`. Posts that
 `translate.ts` deliberately skips (non-Japanese, too short) also stay NULL
@@ -101,8 +104,8 @@ value) so they leave the `translation IS NULL` queue instead of crowding
 its newest-50 window. Gemini
 returns `translation`, `vocabulary` and `grammar`; the furigana `annotated`
 field was dropped from the schema the same day (the Reader never rendered
-it, and it was roughly half of the output tokens), so the column stays
-null for new rows.
+it, and it was roughly half of the output tokens); the column itself was
+dropped by kaf-observatory migration 0009 on 2026-10-14.
 
 Each run logs its queue composition and billed token usage, e.g.
 `Translating 10 posts (capped at 10) — official:8, kafu:2` and

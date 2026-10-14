@@ -91,7 +91,8 @@ Given a Japanese tweet, return:
 
 // `annotated` (furigana segments) was dropped from the schema 2026-10-10:
 // the Reader never rendered it (react-tweet owns the body DOM) and it was a
-// large share of output tokens. The kaf_posts column stays, null from now on.
+// large share of output tokens. The kaf_posts column itself was dropped by
+// kaf-observatory migration 0009 (2026-10-14).
 interface TranslationResult {
     translation: string;
     vocabulary: Array<{ word: string; reading: string; meaning: string }>;

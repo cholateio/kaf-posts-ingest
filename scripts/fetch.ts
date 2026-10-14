@@ -18,6 +18,7 @@ import { feedWarnings } from './lib/feedHealth';
 import { tweetBody } from './lib/tweetBody';
 import { memberships, membershipPatches, ownerOf, type ExistingRow, type FeedType } from './lib/feedRank';
 import { tweetAuthor } from './lib/tweetAuthor';
+import { isRetained } from './lib/retention';
 
 type MediaContent = { $: { url: string; medium?: string } };
 
@@ -284,7 +285,7 @@ async function main() {
             }
 
             const existingIds = new Set((existing ?? []).map((p: { external_id: string }) => p.external_id));
-            const newEntries = relevant.filter((e) => !existingIds.has(e.externalId));
+            const newEntries = relevant.filter((e) => !existingIds.has(e.externalId) && isRetained(e.externalId, e.publishedAt));
 
             if (newEntries.length === 0) {
                 console.log(`  ${source.name}: 0 new (${relevant.length} already exist)`);
@@ -296,7 +297,6 @@ async function main() {
                 feed_type: ownerOf(typesOf(e)),
                 seen_in: typesOf(e),
                 external_id: e.externalId,
-                title: e.title,
                 original_text: e.text,
                 media_urls: e.mediaUrls,
                 published_at: e.publishedAt,

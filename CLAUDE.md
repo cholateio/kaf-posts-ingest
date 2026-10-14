@@ -7,7 +7,7 @@
 
 RSS 抓取 + 翻譯 worker：每小時抓 KAF（花譜）相關 X/Twitter 帳號的 rss.app
 RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼文
-（日→繁中，含單字/文法欄位；注音 `annotated` 已於 2026-10-10 停產）回寫同一列。前端消費者是
+（日→繁中，含單字/文法欄位；注音 `annotated` 已於 2026-10-10 停產、2026-10-14 刪欄；10/1 前的貼文已刪，`retention.ts` 擋回流）回寫同一列。前端消費者是
 **kaf-observatory**（舊名 virtual-desk）的 Reader overlay——唯讀 `kaf_posts`。
 
 ## Stack
