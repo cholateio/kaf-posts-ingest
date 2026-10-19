@@ -1,15 +1,11 @@
 name: Ingest
 
 on:
-  # Only trigger: GCP Cloud Scheduler job `kaf-posts-ingest-hourly` (project
-  # kaf-obs, asia-east1, `15 * * * *`) POSTs the workflow_dispatch API with a
-  # fine-grained PAT (this repo only, Actions: read/write, no expiration).
-  # Do NOT add `schedule:` back: GitHub ran it best-effort (4-16 runs/day,
-  # never 24) and auto-disables schedule-bearing workflows after 60 days of
-  # repo inactivity — and a disabled workflow rejects workflow_dispatch too,
-  # which would silently kill the Scheduler trigger as well (2026-10-01..09
-  # outage: Reader stale 8 days, fan posts for 10/2-10/7 lost for good since
-  # rss.app keeps only 25 items per feed).
+  # Triggered hourly by an external scheduler calling the workflow_dispatch
+  # API. Do NOT add `schedule:` back: GitHub runs it best-effort (far fewer
+  # than 24 runs/day) and auto-disables schedule-bearing workflows after 60
+  # days of repo inactivity -- and a disabled workflow rejects
+  # workflow_dispatch too, which would silently stop the external trigger.
   workflow_dispatch:
 
 # Queue (not cancel) overlapping runs, e.g. a manual run during a Scheduler
@@ -18,18 +14,23 @@ concurrency:
   group: ingest
   cancel-in-progress: false
 
+# Least privilege: the job only checks out this repo; all writes go to
+# external services via secrets.
+permissions:
+  contents: read
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # pnpm/action-setup reads the pnpm version from package.json's
       # "packageManager" field; runs before setup-node so cache: pnpm works.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
