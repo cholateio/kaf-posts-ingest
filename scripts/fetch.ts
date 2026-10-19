@@ -233,7 +233,7 @@ async function main() {
         const row: FeedReport = { name: source.name, entries: 0, dropped: 0, inserted: 0, retagged: 0, joined: 0, newestIso: null, warnings: [] };
         report.push(row);
         try {
-            console.log(`Fetching ${source.name} (${source.rssUrl})...`);
+            console.log(`Fetching ${source.name}...`);
             const entries = await parseRssFeed(source.rssUrl);
             row.entries = entries.length;
             row.newestIso = entries.reduce<string | null>((max, e) => (max && max > e.publishedAt ? max : e.publishedAt), null);

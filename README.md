@@ -59,7 +59,7 @@ You need a GitHub account, a Supabase project, a Google AI Studio API key for Ge
 1. Fork the repo.
 2. In Supabase, create the `kaf_posts` and `kaf_streams` tables with the columns above, plus `id` and `source_type` on `kaf_posts`. `external_id` and `video_id` must be unique, `seen_in` is a text array, and `vocabulary` and `grammar` are `jsonb`. The exact writes are in `scripts/fetch.ts`, `scripts/translate.ts` and `StreamRow` in `scripts/lib/youtube.ts`.
 3. Edit the sources: feed keys in `SOURCES` (`scripts/fetch.ts`) and `TWEET_FEEDS`, channel IDs in `STREAM_CHANNEL_IDS` (`scripts/streams.ts`), and the cutoff date in `scripts/lib/retention.ts`, which ignores tweets published before 1 October 2026.
-4. In your fork, open **Settings → Secrets and variables → Actions → New repository secret** and add four secrets: `SUPABASE_URL` with your project URL, `SUPABASE_SERVICE_KEY` with the service-role key, `GEMINI_API_KEY`, and `YOUTUBE_API_KEY`.
+4. In your fork, open **Settings → Secrets and variables → Actions → New repository secret** and add five secrets: `SUPABASE_URL` with your project URL, `SUPABASE_SERVICE_KEY` with the service-role key, `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, and `RSS_FEEDS` with a JSON object mapping each feed key used in `scripts/fetch.ts` to its rss.app feed id, for example `{"kafu":"<id>"}`.
 5. Open **Actions → Ingest → Run workflow** and read the log of the first run.
 6. Have your scheduler send `POST https://api.github.com/repos/<you>/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches` with the body `{"ref":"main"}` every hour, authorised by a fine-grained token limited to this repo with **Actions: Read and write**. The workflow has no built-in schedule.
 

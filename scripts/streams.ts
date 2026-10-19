@@ -12,7 +12,7 @@ import { fetchPlaylistVideoIds } from './lib/rssDiscovery';
 import { tweetMembersOnlyHints } from './lib/membersOnly';
 import { assembleRows, type Discovery, type StaleRow } from './lib/assembleRows';
 import { fetchVideoItems, type DiscoveredVia } from './lib/youtube';
-import { feedUrl } from './lib/feeds';
+import { feedUrl, redactFeedUrls } from './lib/feeds';
 
 // Keep in sync with kaf-observatory/src/lib/schedule/roster.ts. Drift only
 // costs tweet-discovered members-only streams; public streams are also
@@ -110,7 +110,7 @@ async function main() {
                 for (const [id, membersOnly] of tweetMembersOnlyHints(item)) note(id, 'tweet', membersOnly);
             }
         } catch (err) {
-            console.error(`  tweet feed ${feed}: FAILED -`, err);
+            console.error(`  tweet feed ${redactFeedUrls(feed)}: FAILED -`, redactFeedUrls(String(err)));
         }
     }
     console.log(`Discovered ${discovered.size} video ids`);

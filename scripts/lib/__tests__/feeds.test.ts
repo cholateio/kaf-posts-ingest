@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { feedUrl, parseFeeds } from '../feeds';
+import { feedUrl, parseFeeds, redactFeedUrls } from '../feeds';
 
 describe('feedUrl', () => {
     const env = { RSS_FEEDS: '{"kafu":"abcDEF123","rim":"x_y"}' };
@@ -21,5 +21,13 @@ describe('parseFeeds', () => {
         expect(() => parseFeeds('["a"]')).toThrow('must be a JSON object');
         expect(() => parseFeeds('{"k":"https://rss.app/feeds/x.xml"}')).toThrow('not an rss.app feed id');
         expect(() => parseFeeds('{"k":7}')).toThrow('not an rss.app feed id');
+    });
+});
+
+describe('redactFeedUrls', () => {
+    it('hides every feed id in a log line', () => {
+        expect(redactFeedUrls('GET https://rss.app/feeds/abc123.xml failed; https://rss.app/feeds/x_y.xml')).toBe(
+            'GET https://rss.app/feeds/***.xml failed; https://rss.app/feeds/***.xml',
+        );
     });
 });
