@@ -42,6 +42,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RSS_FEEDS: ${{ secrets.RSS_FEEDS }}
 
       - name: Translate untranslated Japanese posts
         run: pnpm run translate
@@ -59,3 +60,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          RSS_FEEDS: ${{ secrets.RSS_FEEDS }}

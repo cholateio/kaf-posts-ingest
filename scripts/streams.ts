@@ -4,7 +4,7 @@
  * the Data API, refreshes stale upcoming/live rows, and upserts kaf_streams.
  *
  * Usage:  pnpm run streams
- * Env:    SUPABASE_URL, SUPABASE_SERVICE_KEY, YOUTUBE_API_KEY
+ * Env:    SUPABASE_URL, SUPABASE_SERVICE_KEY, YOUTUBE_API_KEY, RSS_FEEDS
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
@@ -12,6 +12,7 @@ import { fetchPlaylistVideoIds } from './lib/rssDiscovery';
 import { tweetMembersOnlyHints } from './lib/membersOnly';
 import { assembleRows, type Discovery, type StaleRow } from './lib/assembleRows';
 import { fetchVideoItems, type DiscoveredVia } from './lib/youtube';
+import { feedUrl } from './lib/feeds';
 
 // Keep in sync with kaf-observatory/src/lib/schedule/roster.ts. Drift only
 // costs tweet-discovered members-only streams; public streams are also
@@ -52,14 +53,14 @@ export const STREAM_CHANNEL_IDS: string[] = [
 // stored as a guest appearance (assembleRows.ts), so a fan/search feed here
 // would turn every linked stream into an event.
 export const TWEET_FEEDS: string[] = [
-    'https://rss.app/feeds/TrZl0i4ipQm1dz7k.xml', // @virtual_kaf
-    'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml', // @kaf_info
-    'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', // @RIM_virtual
-    'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', // @harusaruhi
-    'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', // @isekaijoucho
-    'https://rss.app/feeds/TYDwRRSZFvrOQSxW.xml', // @KOKO__virtual
-    'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', // @CIEL_VanillaSky
-    'https://rss.app/feeds/WEFzDiokBhPkt2IO.xml', // @ASU_virtual
+    feedUrl('official-kaf'), // @virtual_kaf
+    feedUrl('official-info'), // @kaf_info
+    feedUrl('rim'), // @RIM_virtual
+    feedUrl('harusaruhi'), // @harusaruhi
+    feedUrl('isekaijoucho'), // @isekaijoucho
+    feedUrl('koko'), // @KOKO__virtual
+    feedUrl('ciel'), // @CIEL_VanillaSky
+    feedUrl('asu'), // @ASU_virtual
 ];
 
 const STALE_REFRESH_MS = 30 * 60 * 1000;

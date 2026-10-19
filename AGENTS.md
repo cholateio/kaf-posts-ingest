@@ -24,16 +24,16 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 - `scripts/fetch.ts` — 抓 SOURCES 內 11 個 rss.app feed（花譜 2 帳號 + 3 搜尋 + 6 位成員主帳號），去重後 insert 進 `kaf_posts`；每個看到該列的 feed 把自己的歸屬併進 `seen_in`（`feedRank.memberships`），`feed_type` = rank 最高的 owner
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限，tier 依 `seen_in` 包含 official/kafu/fan）跑 Gemini，回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 `docs/DEVELOPMENT.md`「Streams」）
-- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly` / `tweetBody` / `tweetAuthor` / `translateInput` / `feedRank` / `feedHealth` / `stripNul`）+ `__tests__/`
+- `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly` / `tweetBody` / `tweetAuthor` / `translateInput` / `feedRank` / `feedHealth` / `stripNul` / `feeds`）+ `__tests__/`
 - `.github/workflows/ingest.yml` — 唯一 CI workflow：workflow_dispatch（由外部排程器觸發）+ secrets
-- `.env.example` — 本地開發四把 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY / YOUTUBE_API_KEY）
+- `.env.example` — 本地開發 key 範本（SUPABASE_URL / SUPABASE_SERVICE_KEY / GEMINI_API_KEY / YOUTUBE_API_KEY / RSS_FEEDS）
 - `docs/specs/` — spec 入口（目前空）
 
 ## Constraints
 
 - `ingest.yml` 不得加回 `schedule:`（被停用的 workflow 也會拒絕 workflow_dispatch，外部觸發會一起斷）。
 - 10/1 前的貼文已刪除，`scripts/lib/retention.ts` 擋回流；不要繞過。
-- 金鑰只放 gitignored 的 `.env`（名稱見 `.env.example`）或 Actions secrets，絕不進 git。
+- 金鑰只放 gitignored 的 `.env`（名稱見 `.env.example`）或 Actions secrets，絕不進 git。rss.app feed id 也算（付費能力）：程式碼只寫 key（`feedUrl('kafu')`），id 放 `RSS_FEEDS`。
 - Path-type constraints are mirrored in `kit.toml [protected]`; keep the two in sync (one glob per line).
 
 ## Conventions

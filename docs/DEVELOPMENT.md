@@ -3,7 +3,7 @@
 ## Commands
 
 ```bash
-cp .env.example .env       # then fill in the four keys
+cp .env.example .env       # then fill in the keys and RSS_FEEDS
 pnpm install
 pnpm run fetch             # pull RSS, insert new kaf_posts rows
 pnpm run translate         # translate up to 10 untranslated rows
@@ -17,6 +17,8 @@ pnpm test                  # vitest over the pure functions in scripts/lib/
 ## Environment variables
 
 Locally from `.env` (gitignored, template in `.env.example`); in CI from repository Actions secrets.
+
+`RSS_FEEDS` holds the rss.app feed ids as a JSON object (`{"kafu": "<id>", ...}`). The ids are paid capabilities, so the code names feeds only by key (`feedUrl('kafu')` in `scripts/lib/feeds.ts`); a missing key fails the run instead of silently skipping a feed.
 
 - `SUPABASE_URL`: Supabase project URL.
 - `SUPABASE_SERVICE_KEY`: service-role key. Bypasses RLS; never expose it on a web surface.
@@ -86,7 +88,7 @@ Each run logs its queue composition and token usage, e.g. `Translating 10 posts 
 - `scripts/translate.ts` → `MAX_TRANSLATIONS_PER_RUN` (default `10`): the per-run hard cap and the circuit-breaker on Gemini usage. Raising it, or the scheduler frequency, raises the ceiling proportionally.
 - `scripts/translate.ts` → `GEMINI_MODEL` together with the per-token price constants beside it; change them together or the logged estimate is wrong. A `404 no longer available` means Google retired the model, not that the key broke (happened 2026-07-15).
 - `scripts/translate.ts` → `FEED_PRIORITY`: the drain order above.
-- `scripts/fetch.ts` → `SOURCES`: add or remove feeds. Search-backed feeds need `mustMatch`; every feed needs `maxQuietHours`.
+- `scripts/fetch.ts` → `SOURCES`: add or remove feeds (add the new key and id to the `RSS_FEEDS` secret and your `.env` first). Search-backed feeds need `mustMatch`; every feed needs `maxQuietHours`.
 - Run frequency lives in the external scheduler, not in the workflow file.
 
 ## Streams (live schedule)

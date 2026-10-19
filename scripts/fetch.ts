@@ -4,7 +4,7 @@
  * companion `translate.ts` step.
  *
  * Usage:  pnpm run fetch    (or: tsx scripts/fetch.ts)
- * Env:    SUPABASE_URL, SUPABASE_SERVICE_KEY
+ * Env:    SUPABASE_URL, SUPABASE_SERVICE_KEY, RSS_FEEDS
  */
 
 // Local dev: read .env. On GitHub Actions the env vars come from the
@@ -19,6 +19,7 @@ import { tweetBody } from './lib/tweetBody';
 import { memberships, membershipPatches, ownerOf, type ExistingRow, type FeedType } from './lib/feedRank';
 import { tweetAuthor } from './lib/tweetAuthor';
 import { isRetained } from './lib/retention';
+import { feedUrl } from './lib/feeds';
 
 type MediaContent = { $: { url: string; medium?: string } };
 
@@ -77,13 +78,13 @@ const SOURCES: Source[] = [
     {
         name: 'KAF Official',
         feedType: 'official',
-        rssUrl: 'https://rss.app/feeds/TrZl0i4ipQm1dz7k.xml',
+        rssUrl: feedUrl('official-kaf'),
         maxQuietHours: TIMELINE_QUIET_H,
     },
     {
         name: 'KAF Info',
         feedType: 'official',
-        rssUrl: 'https://rss.app/feeds/HGY9VajmSLSoYIWC.xml',
+        rssUrl: feedUrl('official-info'),
         maxQuietHours: TIMELINE_QUIET_H,
     },
     // Two wrappers of the same X search: rss.app's default (Top tab) and
@@ -97,7 +98,7 @@ const SOURCES: Source[] = [
     {
         name: 'KAF Fan #KAF',
         feedType: 'fan',
-        rssUrl: 'https://rss.app/feeds/sobCJ2ZL60gmrRKt.xml',
+        rssUrl: feedUrl('fan-top'),
         mustMatch: /花譜|kaf|カフ|可不/i,
         fansOnly: true,
         maxQuietHours: 24,
@@ -105,7 +106,7 @@ const SOURCES: Source[] = [
     {
         name: 'KAF Fan #KAF (latest)',
         feedType: 'fan',
-        rssUrl: 'https://rss.app/feeds/u9s6xz2Y3aj9qbFW.xml',
+        rssUrl: feedUrl('fan-latest'),
         mustMatch: /花譜|kaf|カフ|可不/i,
         fansOnly: true,
         maxQuietHours: 24,
@@ -113,7 +114,7 @@ const SOURCES: Source[] = [
     {
         name: 'KAFU #KAFU',
         feedType: 'kafu',
-        rssUrl: 'https://rss.app/feeds/O6oRYJpoK0nmmzSm.xml',
+        rssUrl: feedUrl('kafu'),
         mustMatch: /可不|kafu/i,
         maxQuietHours: 72,
     },
@@ -121,12 +122,12 @@ const SOURCES: Source[] = [
     // staff announcements and carry the day-of "starting soon" posts.
     // Members-only streams are absent from the public UULV playlists, so
     // these tweets are the only way streams.ts learns about them.
-    { name: 'RIM', feedType: 'rim', rssUrl: 'https://rss.app/feeds/4bNdyMswbQ4dyGRm.xml', maxQuietHours: TIMELINE_QUIET_H },
-    { name: 'Harusaruhi', feedType: 'harusaruhi', rssUrl: 'https://rss.app/feeds/WzmRw0SvxXvIKKDj.xml', maxQuietHours: TIMELINE_QUIET_H },
-    { name: 'Isekaijoucho', feedType: 'isekaijoucho', rssUrl: 'https://rss.app/feeds/q34CgypDhDb9uPSi.xml', maxQuietHours: TIMELINE_QUIET_H },
-    { name: 'Koko', feedType: 'koko', rssUrl: 'https://rss.app/feeds/TYDwRRSZFvrOQSxW.xml', maxQuietHours: TIMELINE_QUIET_H },
-    { name: 'CIEL', feedType: 'ciel', rssUrl: 'https://rss.app/feeds/fBrcroINXq6Bw3R5.xml', maxQuietHours: TIMELINE_QUIET_H },
-    { name: 'ASU', feedType: 'asu', rssUrl: 'https://rss.app/feeds/WEFzDiokBhPkt2IO.xml', maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'RIM', feedType: 'rim', rssUrl: feedUrl('rim'), maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'Harusaruhi', feedType: 'harusaruhi', rssUrl: feedUrl('harusaruhi'), maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'Isekaijoucho', feedType: 'isekaijoucho', rssUrl: feedUrl('isekaijoucho'), maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'Koko', feedType: 'koko', rssUrl: feedUrl('koko'), maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'CIEL', feedType: 'ciel', rssUrl: feedUrl('ciel'), maxQuietHours: TIMELINE_QUIET_H },
+    { name: 'ASU', feedType: 'asu', rssUrl: feedUrl('asu'), maxQuietHours: TIMELINE_QUIET_H },
 ];
 
 interface RssEntry {
