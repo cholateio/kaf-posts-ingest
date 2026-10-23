@@ -40,6 +40,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Gemini 翻譯未翻譯的貼
 
 - Conventional commits（`type(scope): 摘要`）；commit 前跑 `pnpm test`。
 - 純邏輯放 `scripts/lib/` 並附 `__tests__/`；fetch/translate 本體以實跑輸出驗證。
+- `README.md`（英文）與 `README.zh-TW.md`（繁中）互為對照版本，改其中一份就要在同一個 commit 同步更新另一份。
 - GitHub Actions: top-level `permissions: contents: read`, raised per job only when needed.
 - GitHub Actions: pin every `uses:` to a 40-character commit SHA with a trailing `# vX.Y.Z` comment.
 

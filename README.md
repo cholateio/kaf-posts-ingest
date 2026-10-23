@@ -1,5 +1,7 @@
 # kaf-posts-ingest
 
+**English** | [繁體中文](README.zh-TW.md)
+
 You follow the virtual singer KAF (花譜) and the KAMITSUBAKI talents, and want their X posts translated and their YouTube streams on one schedule. Once an hour a GitHub Actions run pulls the X feeds, translates new Japanese posts into Traditional Chinese with vocabulary and grammar notes, and writes posts and stream times into your own Supabase project.
 
 ```
