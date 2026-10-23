@@ -1,8 +1,8 @@
 # kaf-posts-ingest
 
-**English** | [繁體中文](README.zh-TW.md)
+**繁體中文** | [English](README.en.md)
 
-You follow the virtual singer KAF (花譜) and the KAMITSUBAKI talents, and want their X posts translated and their YouTube streams on one schedule. Once an hour a GitHub Actions run pulls the X feeds, translates new Japanese posts into Traditional Chinese with vocabulary and grammar notes, and writes posts and stream times into your own Supabase project.
+你追蹤虛擬歌手花譜（KAF）和 KAMITSUBAKI 旗下的成員，想看懂她們 X 貼文的翻譯，也想把她們的 YouTube 直播整理成同一份時程表。GitHub Actions 每小時跑一次：抓取 X 的 feed，把新的日文貼文翻成繁體中文並附上單字和文法說明，再把貼文和直播時間寫進你自己的 Supabase 專案。
 
 ```
 $ tsx scripts/fetch.ts
@@ -22,12 +22,12 @@ Discovered 602 video ids
 Nothing new or stale. Done.
 ```
 
-- **Translations for learners**: each Japanese post gets a Traditional Chinese translation that keeps its line breaks, 5–8 vocabulary words with readings, and 1–3 grammar patterns, stored as JSON next to the original text.
-- **Off-topic filter**: posts from the X search feeds must mention the subject in the tweet body or they are dropped, and posts with no kana or under 4 characters of real text are marked as nothing to translate.
-- **One row per tweet**: a tweet seen in several feeds is stored once and filed under the most authoritative one (official, then talent accounts, then the 可不 search, then the fan search), and official posts are translated first, 10 per run.
-- **Stream schedule**: each roster channel's live and uploads playlists, plus YouTube links in official and talent tweets, are looked up on the YouTube Data API and saved with status, start and end times, and premiere and members-only flags.
+- **給學習者的翻譯**：每則日文貼文都有一份保留原本換行的繁體中文翻譯、5–8 個附讀音的單字，以及 1–3 個文法句型，以 JSON 存在原文旁邊。
+- **過濾離題貼文**：來自 X 搜尋 feed 的貼文，推文本文必須提到主題，否則就丟掉；沒有假名、或實際文字不到 4 個字的貼文，會標記為不需翻譯。
+- **一則推文一列**：同一則推文出現在好幾個 feed 時只存一次，並歸到最權威的那個 feed（依序是官方、成員帳號、可不的搜尋、粉絲的搜尋）；翻譯時官方貼文優先，每次執行翻 10 則。
+- **直播時程**：名冊上每個頻道的直播與上傳播放清單，加上官方和成員推文裡的 YouTube 連結，都會透過 YouTube Data API 查詢，存下狀態、開始與結束時間，以及首播和會員限定的標記。
 
-Input and output for one feed:
+單一 feed 的輸入與輸出：
 
 ```ts
 // scripts/fetch.ts → SOURCES
@@ -41,40 +41,40 @@ kaf_streams  video_id, channel_id, title, scheduled_start, actual_start, status,
              is_premiere, members_only, discovered_via, hashtags
 ```
 
-The feeds, channel list and filters are written for KAF and the KAMITSUBAKI roster, and the table definitions are not in this repo, so your own copy needs your own feeds, channels and tables.
+feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名冊寫的，資料表定義也不在這個 repo 裡，所以你自己的版本要準備自己的 feed、頻道和資料表。
 
-## How it works
+## 它怎麼運作
 
 ```
-your scheduler, hourly ──► GitHub Actions "Ingest" (workflow_dispatch)
-   fetch      rss.app X feeds ──► relevance filter ──► kaf_posts
-   translate  untranslated rows ──► Gemini ──► translation, vocabulary, grammar
-   streams    YouTube playlists + tweet links ──► YouTube Data API ──► kaf_streams
+你的排程器，每小時 ──► GitHub Actions "Ingest" (workflow_dispatch)
+   fetch      rss.app X feed ──► 相關性過濾 ──► kaf_posts
+   translate  未翻譯的列 ──► Gemini ──► translation, vocabulary, grammar
+   streams    YouTube 播放清單 + 推文連結 ──► YouTube Data API ──► kaf_streams
 ```
 
-There is no server and no public endpoint. The worker only writes to Supabase; a front end only needs to read from it.
+沒有伺服器，也沒有公開的端點。worker 只會寫入 Supabase，前端只要從 Supabase 讀取就好。
 
-## Install
+## 安裝
 
-You need a GitHub account, a Supabase project, a Google AI Studio API key for Gemini, a Google Cloud API key limited to YouTube Data API v3, [rss.app](https://rss.app) feeds for the X accounts and searches you follow, and something that can send an HTTP request every hour.
+需要：GitHub 帳號、Supabase 專案、給 Gemini 用的 Google AI Studio API key、限定只能呼叫 YouTube Data API v3 的 Google Cloud API key、你追蹤的 X 帳號和搜尋所對應的 [rss.app](https://rss.app) feed，以及一個能每小時送出 HTTP 請求的東西。
 
-1. Fork the repo.
-2. In Supabase, create the `kaf_posts` and `kaf_streams` tables with the columns above, plus `id` and `source_type` on `kaf_posts`. `external_id` and `video_id` must be unique, `seen_in` is a text array, and `vocabulary` and `grammar` are `jsonb`. The exact writes are in `scripts/fetch.ts`, `scripts/translate.ts` and `StreamRow` in `scripts/lib/youtube.ts`.
-3. Edit the sources: feed keys in `SOURCES` (`scripts/fetch.ts`) and `TWEET_FEEDS`, channel IDs in `STREAM_CHANNEL_IDS` (`scripts/streams.ts`), and the cutoff date in `scripts/lib/retention.ts`, which ignores tweets published before 1 October 2026.
-4. In your fork, open **Settings → Secrets and variables → Actions → New repository secret** and add five secrets: `SUPABASE_URL` with your project URL, `SUPABASE_SERVICE_KEY` with the service-role key, `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, and `RSS_FEEDS` with a JSON object mapping each feed key used in `scripts/fetch.ts` to its rss.app feed id, for example `{"kafu":"<id>"}`.
-5. Open **Actions → Ingest → Run workflow** and read the log of the first run.
-6. Have your scheduler send `POST https://api.github.com/repos/<you>/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches` with the body `{"ref":"main"}` every hour, authorised by a fine-grained token limited to this repo with **Actions: Read and write**. The workflow has no built-in schedule.
+1. Fork 本 repo。
+2. 在 Supabase 建立 `kaf_posts` 和 `kaf_streams` 兩張資料表，欄位如上，`kaf_posts` 另外加上 `id` 和 `source_type`。`external_id` 和 `video_id` 必須唯一，`seen_in` 是 text 陣列，`vocabulary` 和 `grammar` 是 `jsonb`。實際寫入的內容請看 `scripts/fetch.ts`、`scripts/translate.ts`，以及 `scripts/lib/youtube.ts` 裡的 `StreamRow`。
+3. 修改來源：`SOURCES`（`scripts/fetch.ts`）和 `TWEET_FEEDS` 裡的 feed key、`STREAM_CHANNEL_IDS`（`scripts/streams.ts`）裡的頻道 ID，以及 `scripts/lib/retention.ts` 裡的截止日期，它會忽略 2026 年 10 月 1 日以前發布的推文。
+4. 在你的 fork 打開 **Settings → Secrets and variables → Actions → New repository secret**，新增五個 secret：`SUPABASE_URL` 填你的專案 URL、`SUPABASE_SERVICE_KEY` 填 service-role key、`GEMINI_API_KEY`、`YOUTUBE_API_KEY`，以及 `RSS_FEEDS`，內容是一個 JSON 物件，把 `scripts/fetch.ts` 用到的每個 feed key 對應到它的 rss.app feed id，例如 `{"kafu":"<id>"}`。
+5. 打開 **Actions → Ingest → Run workflow**，看第一次執行的 log。
+6. 讓你的排程器每小時送出 `POST https://api.github.com/repos/<you>/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches`，body 是 `{"ref":"main"}`，用一把只限這個 repo、權限開 **Actions: Read and write** 的 fine-grained token 授權。workflow 本身沒有內建排程。
 
-A green run does not prove posts were translated, because one failed post never fails the job. Check the log and the **Feed health** warnings on the run page.
+執行結果顯示綠燈，不代表貼文都翻譯成功了，因為單一貼文失敗不會讓整個 job 失敗。請看 log 和執行頁面上的 **Feed health** 警告。
 
-## Privacy & security
+## 隱私與安全
 
-- All keys, and the rss.app feed ids (`RSS_FEEDS`, a JSON object of feed key to id), live in GitHub Actions secrets, or in a gitignored `.env` for local runs. None are committed.
-- The service-role key bypasses row-level security. The worker needs it to write; never put it in a front end.
-- Post text, without links and the trailing author line, is sent to Google's Gemini API. Video IDs are sent to the YouTube Data API.
-- Only public posts and public video details are stored: text, media URLs, translations, and stream titles and times.
-- The workflow's GitHub token can only read this repo; all writes go to Supabase.
+- 所有 key，以及 rss.app 的 feed id（`RSS_FEEDS`，一個 feed key 對應 id 的 JSON 物件），都存在 GitHub Actions secrets；在本機執行時則放在被 gitignore 的 `.env`。沒有任何一個會 commit 進 repo。
+- service-role key 會繞過 row-level security。worker 要寫入就需要它；絕對不要把它放進前端。
+- 貼文文字（去掉連結和結尾的作者行）會送到 Google 的 Gemini API。影片 ID 會送到 YouTube Data API。
+- 只儲存公開貼文和公開的影片資訊：文字、媒體 URL、翻譯，以及直播的標題和時間。
+- workflow 的 GitHub token 只能讀取這個 repo；所有寫入都送到 Supabase。
 
-## License
+## 授權
 
-[MIT](LICENSE).
+[MIT](LICENSE)。

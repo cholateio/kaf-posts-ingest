@@ -2,7 +2,7 @@
 kit = 5                    # schema major; `kit doctor` validates
 visibility = "public"      # public | private — selects the guard tier; `kit audit` verifies against GitHub
 license = "MIT"            # MIT | CC-BY-4.0 | none
-readme_lang = "en"           # en (default) | zh-TW — audit language check
+readme_lang = "zh-TW"           # en (default) | zh-TW — audit language check
 protected = [              # no-touch globs (repo-relative, `*` crosses `/`). PreToolUse hook hard-denies Edit/Write.
   # one entry per line, no inline comments on entry lines — a bash hook parses this block
 ]
