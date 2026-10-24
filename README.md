@@ -48,7 +48,7 @@ feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名�
 ```
 你的排程器，每小時 ──► GitHub Actions "Ingest" (workflow_dispatch)
    fetch      rss.app X feed ──► 相關性過濾 ──► kaf_posts
-   translate  未翻譯的列 ──► Gemini ──► translation, vocabulary, grammar
+   translate  未翻譯的列 ──► Claude Haiku ──► translation, vocabulary, grammar
    streams    YouTube 播放清單 + 推文連結 ──► YouTube Data API ──► kaf_streams
 ```
 
@@ -56,12 +56,12 @@ feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名�
 
 ## 安裝
 
-需要：GitHub 帳號、Supabase 專案、給 Gemini 用的 Google AI Studio API key、限定只能呼叫 YouTube Data API v3 的 Google Cloud API key、你追蹤的 X 帳號和搜尋所對應的 [rss.app](https://rss.app) feed，以及一個能每小時送出 HTTP 請求的東西。
+需要：GitHub 帳號、Supabase 專案、給 Claude 用的 Anthropic API key、限定只能呼叫 YouTube Data API v3 的 Google Cloud API key、你追蹤的 X 帳號和搜尋所對應的 [rss.app](https://rss.app) feed，以及一個能每小時送出 HTTP 請求的東西。
 
 1. Fork 本 repo。
 2. 在 Supabase 建立 `kaf_posts` 和 `kaf_streams` 兩張資料表，欄位如上，`kaf_posts` 另外加上 `id` 和 `source_type`。`external_id` 和 `video_id` 必須唯一，`seen_in` 是 text 陣列，`vocabulary` 和 `grammar` 是 `jsonb`。實際寫入的內容請看 `scripts/fetch.ts`、`scripts/translate.ts`，以及 `scripts/lib/youtube.ts` 裡的 `StreamRow`。
 3. 修改來源：`SOURCES`（`scripts/fetch.ts`）和 `TWEET_FEEDS` 裡的 feed key、`STREAM_CHANNEL_IDS`（`scripts/streams.ts`）裡的頻道 ID，以及 `scripts/lib/retention.ts` 裡的截止日期，它會忽略 2026 年 10 月 1 日以前發布的推文。
-4. 在你的 fork 打開 **Settings → Secrets and variables → Actions → New repository secret**，新增五個 secret：`SUPABASE_URL` 填你的專案 URL、`SUPABASE_SERVICE_KEY` 填 service-role key、`GEMINI_API_KEY`、`YOUTUBE_API_KEY`，以及 `RSS_FEEDS`，內容是一個 JSON 物件，把 `scripts/fetch.ts` 用到的每個 feed key 對應到它的 rss.app feed id，例如 `{"kafu":"<id>"}`。
+4. 在你的 fork 打開 **Settings → Secrets and variables → Actions → New repository secret**，新增五個 secret：`SUPABASE_URL` 填你的專案 URL、`SUPABASE_SERVICE_KEY` 填 service-role key、`ANTHROPIC_API_KEY`、`YOUTUBE_API_KEY`，以及 `RSS_FEEDS`，內容是一個 JSON 物件，把 `scripts/fetch.ts` 用到的每個 feed key 對應到它的 rss.app feed id，例如 `{"kafu":"<id>"}`。想改用 Google Gemini 翻譯的話，再加一個 `GEMINI_API_KEY` secret，並在同一頁的 **Variables** 分頁新增 `TRANSLATE_PROVIDER` = `gemini`。
 5. 打開 **Actions → Ingest → Run workflow**，看第一次執行的 log。
 6. 讓你的排程器每小時送出 `POST https://api.github.com/repos/<you>/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches`，body 是 `{"ref":"main"}`，用一把只限這個 repo、權限開 **Actions: Read and write** 的 fine-grained token 授權。workflow 本身沒有內建排程。
 
@@ -71,7 +71,7 @@ feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名�
 
 - 所有 key，以及 rss.app 的 feed id（`RSS_FEEDS`，一個 feed key 對應 id 的 JSON 物件），都存在 GitHub Actions secrets；在本機執行時則放在被 gitignore 的 `.env`。沒有任何一個會 commit 進 repo。
 - service-role key 會繞過 row-level security。worker 要寫入就需要它；絕對不要把它放進前端。
-- 貼文文字（去掉連結和結尾的作者行）會送到 Google 的 Gemini API。影片 ID 會送到 YouTube Data API。
+- 貼文文字（去掉連結和結尾的作者行）會送到 Anthropic 的 Claude API（`TRANSLATE_PROVIDER=gemini` 時改送 Google 的 Gemini API）。影片 ID 會送到 YouTube Data API。
 - 只儲存公開貼文和公開的影片資訊：文字、媒體 URL、翻譯，以及直播的標題和時間。
 - workflow 的 GitHub token 只能讀取這個 repo；所有寫入都送到 Supabase。
 

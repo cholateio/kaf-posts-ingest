@@ -22,7 +22,9 @@ Locally from `.env` (gitignored, template in `.env.example`); in CI from reposit
 
 - `SUPABASE_URL`: Supabase project URL.
 - `SUPABASE_SERVICE_KEY`: service-role key. Bypasses RLS; never expose it on a web surface.
-- `GEMINI_API_KEY`: Google AI Studio key. Use a key dedicated to this worker so it can be revoked on its own.
+- `ANTHROPIC_API_KEY`: Anthropic API key for the default translation provider (Claude Haiku 5.5). Use a key dedicated to this worker so it can be revoked on its own.
+- `TRANSLATE_PROVIDER`: `claude` (default when unset or empty) or `gemini`. In CI it is the repo **variable** `TRANSLATE_PROVIDER`, so switching back to Gemini is `gh variable set TRANSLATE_PROVIDER --body gemini`, no commit; `gh variable delete TRANSLATE_PROVIDER` returns to Claude. Any other value fails the translate step.
+- `GEMINI_API_KEY`: Google AI Studio key, read only when `TRANSLATE_PROVIDER=gemini`. Kept in Actions secrets as the fallback path.
 - `YOUTUBE_API_KEY`: Google Cloud API key restricted to YouTube Data API v3. Used only by the streams step, which is `continue-on-error`, so a missing key degrades the schedule but never fails fetch/translate.
 
 ## Schema notes
@@ -38,7 +40,7 @@ ALTER TABLE kaf_posts
 
 A row is "translated" iff `translation IS NOT NULL`. Rows `translate.ts` decides not to translate (no kana, or under 4 core characters once links, hashtags and mentions are removed) get `translation = ''`, so they leave the `IS NULL` queue instead of crowding its newest-50 window; the front end hides the panel for any falsy value. The column alone is therefore not a backlog count.
 
-The furigana `annotated` field was removed from the Gemini schema (never rendered, roughly half of output tokens) and the column was dropped.
+The furigana `annotated` field was removed from the translation schema (never rendered, roughly half of output tokens) and the column was dropped.
 
 Retention: only tweets published from 2026-10-01 00:00 Taiwan time are kept. `scripts/lib/retention.ts` holds that floor (checked against both the snowflake ID and `publishedAt`) so `fetch.ts` never re-inserts older tweets that the feeds still list.
 
@@ -81,12 +83,14 @@ Search feeds marked `fansOnly` store tweets authored by a known account (`KNOWN_
 
 Before queueing, `translateInput.ts` strips rss.app's trailing `— Name (@handle) date` line (it was 30% of input characters and came back translated) and inlined quoted-tweet bodies. Kanji alone does not count as Japanese: Chinese fan posts passed a kanji test and came back translated into Japanese (2026-10-11).
 
-Each run logs its queue composition and token usage, e.g. `Translating 10 posts (capped at 10) — official:8, kafu:2`.
+Each run logs its provider, queue composition and token usage, e.g. `Translating 10 posts via claude (capped at 10) — official:8, kafu:2`.
+
+Claude runs with thinking disabled, effort `low`, and structured outputs: the Gemini `responseSchema` is the single schema source, converted by `toStrictJsonSchema` (`scripts/lib/translateProvider.ts`), which adds the `additionalProperties: false` Claude requires. A Claude refusal (`stop_reason: "refusal"`) marks the row `translation = ''` like an untranslatable row instead of retrying it every run; truncation and other errors stay retryable. The Gemini path is unchanged and has no such terminal state.
 
 ## Tuning knobs
 
-- `scripts/translate.ts` → `MAX_TRANSLATIONS_PER_RUN` (default `10`): the per-run hard cap and the circuit-breaker on Gemini usage. Raising it, or the scheduler frequency, raises the ceiling proportionally.
-- `scripts/translate.ts` → `GEMINI_MODEL` together with the per-token price constants beside it; change them together or the logged estimate is wrong. A `404 no longer available` means Google retired the model, not that the key broke (happened 2026-07-15).
+- `scripts/translate.ts` → `MAX_TRANSLATIONS_PER_RUN` (default `10`): the per-run hard cap and the circuit-breaker on model API usage. Raising it, or the scheduler frequency, raises the ceiling proportionally.
+- `scripts/translate.ts` → `CLAUDE_MODEL` / `GEMINI_MODEL` together with `PRICES`; change them together or the logged estimate is wrong. A `404` from either provider usually means the model was retired, not that the key broke (Google did this 2026-07-15).
 - `scripts/translate.ts` → `FEED_PRIORITY`: the drain order above.
 - `scripts/fetch.ts` → `SOURCES`: add or remove feeds (add the new key and id to the `RSS_FEEDS` secret and your `.env` first). Search-backed feeds need `mustMatch`; every feed needs `maxQuietHours`.
 - Run frequency lives in the external scheduler, not in the workflow file.

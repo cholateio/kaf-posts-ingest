@@ -13,6 +13,7 @@
     "streams": "tsx scripts/streams.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.49.0",
     "dotenv": "^16.4.5",

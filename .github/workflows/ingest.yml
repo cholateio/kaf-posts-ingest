@@ -49,6 +49,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Fallback path: set the repo variable TRANSLATE_PROVIDER=gemini to
+          # switch back without a code change. Unset = claude.
+          TRANSLATE_PROVIDER: ${{ vars.TRANSLATE_PROVIDER }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       # Live-schedule discovery. Independent of the Reader pipeline: a failure
