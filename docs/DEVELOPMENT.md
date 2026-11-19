@@ -18,7 +18,7 @@ pnpm test                  # vitest over the pure functions in scripts/lib/
 
 Locally from `.env` (gitignored, template in `.env.example`); in CI from repository Actions secrets.
 
-`RSS_FEEDS` holds the rss.app feed ids as a JSON object (`{"kafu": "<id>", ...}`). The ids are paid capabilities, so the code names feeds only by key (`feedUrl('kafu')` in `scripts/lib/feeds.ts`); a missing key fails the run instead of silently skipping a feed.
+`RSS_FEEDS` holds the rss.app feed ids as a JSON object (`{"rim": "<id>", ...}`). The ids are paid capabilities, so the code names feeds only by key (`feedUrl('rim')` in `scripts/lib/feeds.ts`); a missing key fails the run instead of silently skipping a feed.
 
 - `SUPABASE_URL`: Supabase project URL.
 - `SUPABASE_SERVICE_KEY`: service-role key. Bypasses RLS; never expose it on a web surface.
@@ -60,15 +60,14 @@ The fetch step raises a `Feed health` annotation when a feed fails, returns 0 en
 
 `gh run view <id> --log` returns only the latest run's log; for older runs fetch the zip with `gh api repos/<owner>/kaf-posts-ingest/actions/runs/<id>/logs > l.zip`.
 
-Throughput, measured over 79 days of archived rows (after the relevance gate): 67 translatable posts/day on average, single-day peak 148, against a capacity of 10 per run × 24 runs/day = 240/day.
+Throughput: with only the official tier queued (since 2026-11-19), demand is about 2–3 posts/day (22 official rows over 2026-11-01..09) against a capacity of 10 per run × 24 runs/day = 240/day. Before that, the fan search brought it to 67/day.
 
 ## Feed hygiene
 
-`SOURCES` in `scripts/fetch.ts` mixes account timelines (clean) and rss.app wrappers around `x.com/search?q=…` (about 10% off-topic). X loosely matches CJK search terms: they get token-split (`板倉可奈　永久不滅` matches 可+不, `瀧廉太郎の「花」の自筆譜` matches 花+譜), the Top tab expands further, and account handles count as matches. Measured against 5784 archived rows, 10% of fan and 9% of kafu entries mentioned no form of the subject.
+`SOURCES` in `scripts/fetch.ts` holds account timelines only. The three rss.app wrappers around `x.com/search?q=…` (fan Top, fan Latest, kafu) stopped updating on 2026-11-10 and were removed on 2026-11-19; rss.app no longer creates new X feeds, so they cannot be rebuilt there. Their rows stay in `kaf_posts`. The notes below apply if a search source ever comes back: they were about 10% off-topic. X loosely matches CJK search terms: they get token-split (`板倉可奈　永久不滅` matches 可+不, `瀧廉太郎の「花」の自筆譜` matches 花+譜), the Top tab expands further, and account handles count as matches. Measured against 5784 archived rows, 10% of fan and 9% of kafu entries mentioned no form of the subject.
 
 - Search-backed sources carry a `mustMatch` regex; failures are dropped before insert and logged as `dropped N off-topic entries`. The regex sees only the tweet body (`tweetBody.ts` strips rss.app's trailing `— @handle date` line), otherwise any handle containing `kaf` passes. Account timelines have no gate.
 - Every source needs a `maxQuietHours` above the longest gap the feed has shown between posts, or the health check warns on normal quiet spells.
-- The fan search is ingested through two rss.app feeds of the same query: the default (Top) and one built with `f=live` (Latest). Snapshots on 2026-10-10 showed each missing posts the other carried (10 of 28, then 6 of 31), and the misses never arrived later. Latest is the backbone; if one must go, drop Top. Duplicates collapse on `external_id`.
 - Talent feeds use the talents' main X accounts, not the `*_staff` ones: main accounts retweet staff announcements and add the day-of "starting soon" posts (measured on @RIM_virtual vs @rim_staff, 2026-10-10). They exist for the streams step, because members-only streams never appear in the public live playlists. `translate.ts` does not queue them.
 
 ### One row per tweet
@@ -79,11 +78,11 @@ Search feeds marked `fansOnly` store tweets authored by a known account (`KNOWN_
 
 ## Translation
 
-`translate.ts` fills each run's queue by tier in `FEED_PRIORITY` order (`official` → `kafu` → `fan`, matched on `seen_in`); a lower tier only gets slots the tiers above left unused. The fan feed outproduces official about 25:1. Talent tiers are absent until the front end has tabs for them; do not add a new type to `FEED_PRIORITY` before that.
+`translate.ts` fills each run's queue by tier in `FEED_PRIORITY` order (matched on `seen_in`); a lower tier only gets slots the tiers above left unused. Only `official` is listed since the fan and kafu searches were removed (2026-11-19). Talent tiers are absent until the front end has tabs for them; do not add a new type to `FEED_PRIORITY` before that.
 
 Before queueing, `translateInput.ts` strips rss.app's trailing `— Name (@handle) date` line (it was 30% of input characters and came back translated) and inlined quoted-tweet bodies. Kanji alone does not count as Japanese: Chinese fan posts passed a kanji test and came back translated into Japanese (2026-10-11).
 
-Each run logs its provider, queue composition and token usage, e.g. `Translating 10 posts via claude (capped at 10) — official:8, kafu:2`.
+Each run logs its provider, queue composition and token usage, e.g. `Translating 2 posts via claude (capped at 10) — official:2`.
 
 Claude runs with thinking disabled, effort `low`, and structured outputs: the Gemini `responseSchema` is the single schema source, converted by `toStrictJsonSchema` (`scripts/lib/translateProvider.ts`), which adds the `additionalProperties: false` Claude requires. A Claude refusal (`stop_reason: "refusal"`) marks the row `translation = ''` like an untranslatable row instead of retrying it every run; truncation and other errors stay retryable. The Gemini path is unchanged and has no such terminal state.
 

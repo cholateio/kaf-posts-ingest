@@ -45,14 +45,13 @@ const CLAUDE_MODEL = 'claude-haiku-5-5';
 // problem.
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
-// Drain order for the translation queue: official posts must never wait behind
-// the fan feed, which outproduces them ~25:1. Each tier is a Reader tab and
-// matches on seen_in membership, not the owning feed_type: a talent's tweet
-// about 可不 is owned by the talent but shown in the Kafu tab, so it must be
-// translated (codex review 2026-10-11). Talent tabs (rim, …) are deliberately
-// absent: the Reader has none yet, so translating rows seen only there would
-// only spend model tokens (decision 2026-10-10).
-const FEED_PRIORITY = ['official', 'kafu', 'fan'] as const;
+// Drain order for the translation queue. Each tier is a Reader tab and matches
+// on seen_in membership, not the owning feed_type. Talent tabs (rim, …) are
+// deliberately absent: the Reader has none yet, so translating rows seen only
+// there would only spend model tokens (decision 2026-10-10). The fan and kafu
+// tiers left with their search feeds (2026-11-19); their rows are all
+// translated.
+const FEED_PRIORITY = ['official'] as const;
 
 // USD per 1M tokens for each provider's model — update model and price together.
 // Claude Haiku 5.5 has a second, 5x rate card above 100K-token prompts; these

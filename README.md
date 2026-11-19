@@ -6,15 +6,13 @@
 
 ```
 $ tsx scripts/fetch.ts
-  KAF Official: 0 new (25 already exist)
-  KAF Fan #KAF (latest): dropped 3 off-topic entries
-  KAF Fan #KAF (latest): 9 new posts
-  KAFU #KAFU: dropped 6 off-topic entries
+  KAF Official: 2 new posts
+  KAF Info: 0 new (25 already exist)
+  RIM: 1 new posts
   …
-Done. Total new posts: 9
+Done. Total new posts: 3
 $ tsx scripts/translate.ts
-  fan: marked 3 rows as nothing to translate
-Translating 10 posts (capped at 10) — fan:10
+Translating 2 posts via claude (capped at 10) — official:2
   …
 $ tsx scripts/streams.ts
   rss blocked for 52 playlists; used playlistItems.list (52 quota units)
@@ -23,15 +21,15 @@ Nothing new or stale. Done.
 ```
 
 - **給學習者的翻譯**：每則日文貼文都有一份保留原本換行的繁體中文翻譯、5–8 個附讀音的單字，以及 1–3 個文法句型，以 JSON 存在原文旁邊。
-- **過濾離題貼文**：來自 X 搜尋 feed 的貼文，推文本文必須提到主題，否則就丟掉；沒有假名、或實際文字不到 4 個字的貼文，會標記為不需翻譯。
-- **一則推文一列**：同一則推文出現在好幾個 feed 時只存一次，並歸到最權威的那個 feed（依序是官方、成員帳號、可不的搜尋、粉絲的搜尋）；翻譯時官方貼文優先，每次執行翻 10 則。
+- **略過不需翻譯的貼文**：沒有假名、或實際文字不到 4 個字的貼文，會標記為不需翻譯。
+- **一則推文一列**：同一則推文出現在好幾個 feed 時只存一次，並歸到最權威的那個 feed（官方優先於成員帳號）；只翻譯官方貼文，每次執行最多 10 則。
 - **直播時程**：名冊上每個頻道的直播與上傳播放清單，加上官方和成員推文裡的 YouTube 連結，都會透過 YouTube Data API 查詢，存下狀態、開始與結束時間，以及首播和會員限定的標記。
 
 單一 feed 的輸入與輸出：
 
 ```ts
 // scripts/fetch.ts → SOURCES
-{ name: 'KAFU #KAFU', feedType: 'kafu', rssUrl: feedUrl('kafu'), mustMatch: /可不|kafu/i, maxQuietHours: 72 }
+{ name: 'RIM', feedType: 'rim', rssUrl: feedUrl('rim'), maxQuietHours: TIMELINE_QUIET_H }
 ```
 
 ```
@@ -41,7 +39,7 @@ kaf_streams  video_id, channel_id, title, scheduled_start, actual_start, status,
              is_premiere, members_only, discovered_via, hashtags
 ```
 
-feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名冊寫的，資料表定義也不在這個 repo 裡，所以你自己的版本要準備自己的 feed、頻道和資料表。
+feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名冊寫的，資料表定義也不在這個 repo 裡，所以你自己的版本要準備自己的 feed、頻道和資料表。注意 rss.app 已不再開放建立新的 X feed（2026-11）。
 
 ## 它怎麼運作
 

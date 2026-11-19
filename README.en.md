@@ -6,15 +6,13 @@ You follow the virtual singer KAF (花譜) and the KAMITSUBAKI talents, and want
 
 ```
 $ tsx scripts/fetch.ts
-  KAF Official: 0 new (25 already exist)
-  KAF Fan #KAF (latest): dropped 3 off-topic entries
-  KAF Fan #KAF (latest): 9 new posts
-  KAFU #KAFU: dropped 6 off-topic entries
+  KAF Official: 2 new posts
+  KAF Info: 0 new (25 already exist)
+  RIM: 1 new posts
   …
-Done. Total new posts: 9
+Done. Total new posts: 3
 $ tsx scripts/translate.ts
-  fan: marked 3 rows as nothing to translate
-Translating 10 posts (capped at 10) — fan:10
+Translating 2 posts via claude (capped at 10) — official:2
   …
 $ tsx scripts/streams.ts
   rss blocked for 52 playlists; used playlistItems.list (52 quota units)
@@ -23,15 +21,15 @@ Nothing new or stale. Done.
 ```
 
 - **Translations for learners**: each Japanese post gets a Traditional Chinese translation that keeps its line breaks, 5–8 vocabulary words with readings, and 1–3 grammar patterns, stored as JSON next to the original text.
-- **Off-topic filter**: posts from the X search feeds must mention the subject in the tweet body or they are dropped, and posts with no kana or under 4 characters of real text are marked as nothing to translate.
-- **One row per tweet**: a tweet seen in several feeds is stored once and filed under the most authoritative one (official, then talent accounts, then the 可不 search, then the fan search), and official posts are translated first, 10 per run.
+- **Skips what needs no translation**: posts with no kana or under 4 characters of real text are marked as nothing to translate.
+- **One row per tweet**: a tweet seen in several feeds is stored once and filed under the most authoritative one (official over talent accounts), and only official posts are translated, at most 10 per run.
 - **Stream schedule**: each roster channel's live and uploads playlists, plus YouTube links in official and talent tweets, are looked up on the YouTube Data API and saved with status, start and end times, and premiere and members-only flags.
 
 Input and output for one feed:
 
 ```ts
 // scripts/fetch.ts → SOURCES
-{ name: 'KAFU #KAFU', feedType: 'kafu', rssUrl: feedUrl('kafu'), mustMatch: /可不|kafu/i, maxQuietHours: 72 }
+{ name: 'RIM', feedType: 'rim', rssUrl: feedUrl('rim'), maxQuietHours: TIMELINE_QUIET_H }
 ```
 
 ```
@@ -41,7 +39,7 @@ kaf_streams  video_id, channel_id, title, scheduled_start, actual_start, status,
              is_premiere, members_only, discovered_via, hashtags
 ```
 
-The feeds, channel list and filters are written for KAF and the KAMITSUBAKI roster, and the table definitions are not in this repo, so your own copy needs your own feeds, channels and tables.
+The feeds, channel list and filters are written for KAF and the KAMITSUBAKI roster, and the table definitions are not in this repo, so your own copy needs your own feeds, channels and tables. Note that rss.app no longer lets you create new X feeds (2026-11).
 
 ## How it works
 

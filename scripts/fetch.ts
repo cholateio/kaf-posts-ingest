@@ -33,18 +33,18 @@ const parser = new Parser<Record<string, never>, { 'media:content': MediaContent
 interface Source {
     name: string;
     // Talent ids match kaf-observatory/src/lib/schedule/roster.ts so a Reader
-    // tab per talent can key on them later. Only official/fan/kafu have tabs
-    // (and translation) today; talent rows exist for streams.ts.
+    // tab per talent can key on them later. Only official is translated
+    // today; talent rows exist for streams.ts.
     feedType: FeedType;
     rssUrl: string;
     /**
      * Relevance gate for search-backed feeds only.
      *
-     * The fan and kafu feeds are rss.app wrappers around `x.com/search?q=花譜`
-     * and `x.com/search?q=可不 kafu`. X returns loosely related results — CJK
+     * X search results are loosely related — CJK
      * queries get token-split (`板倉可奈　永久不滅` matches 可+不; `瀧廉太郎の
      * 「花」の自筆譜` matches 花+譜) and the Top tab expands further. Measured
-     * against 5784 archived rows: 10% of fan and 9% of kafu entries mention no
+     * against 5784 archived rows of the former fan (花譜) and kafu (可不 kafu)
+     * searches: 10% of fan and 9% of kafu entries mention no
      * form of the subject at all, with zero legitimate posts caught by these
      * patterns. Account timelines need no gate. Tested against the tweet body
      * only (tweetBody.ts): the trailing "— @handle date" line would let
@@ -86,37 +86,6 @@ const SOURCES: Source[] = [
         feedType: 'official',
         rssUrl: feedUrl('official-info'),
         maxQuietHours: TIMELINE_QUIET_H,
-    },
-    // Two wrappers of the same X search: rss.app's default (Top tab) and
-    // `f=live` (Latest). Snapshots 2026-10-10 showed each one missing posts
-    // the other had (10/28 and 6/31 within shared windows), and misses never
-    // arrived later. Duplicates collapse on external_id.
-    // 2026-10-13, 57 runs: Latest first-saw 316 posts, Top 78 (Top runs
-    // first, so most of its 78 Latest also had). Latest is the backbone; it
-    // overflows in bursts (25 items spanned 19 min on 10-12) and the gaps it
-    // leaves are where Top's only clearly unique posts fall. Drop Top first.
-    {
-        name: 'KAF Fan #KAF',
-        feedType: 'fan',
-        rssUrl: feedUrl('fan-top'),
-        mustMatch: /花譜|kaf|カフ|可不/i,
-        fansOnly: true,
-        maxQuietHours: 24,
-    },
-    {
-        name: 'KAF Fan #KAF (latest)',
-        feedType: 'fan',
-        rssUrl: feedUrl('fan-latest'),
-        mustMatch: /花譜|kaf|カフ|可不/i,
-        fansOnly: true,
-        maxQuietHours: 24,
-    },
-    {
-        name: 'KAFU #KAFU',
-        feedType: 'kafu',
-        rssUrl: feedUrl('kafu'),
-        mustMatch: /可不|kafu/i,
-        maxQuietHours: 72,
     },
     // Talent main accounts (not the *_staff / *_info ones): they retweet the
     // staff announcements and carry the day-of "starting soon" posts.
