@@ -46,12 +46,19 @@ const CLAUDE_MODEL = 'claude-haiku-5-5';
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 // Drain order for the translation queue. Each tier is a Reader tab and matches
-// on seen_in membership, not the owning feed_type. Talent tabs (rim, …) are
-// deliberately absent: the Reader has none yet, so translating rows seen only
-// there would only spend model tokens (decision 2026-10-10). The fan and kafu
-// tiers left with their search feeds (2026-11-19); their rows are all
-// translated.
-const FEED_PRIORITY = ['official'] as const;
+// on seen_in membership, not the owning feed_type. Keep in sync with the
+// kaf-observatory Reader tabs (src/lib/reader/tabs.ts): a tab missing here
+// shows untranslated posts, a tier without a tab only spends model tokens.
+// The V.W.P member tiers start at MEMBER_TRANSLATE_SINCE: their earlier rows
+// stay untranslated on purpose (no backfill, user decision 2026-11-19).
+const MEMBER_TRANSLATE_SINCE = '2026-11-20T00:00:00+08:00';
+const FEED_PRIORITY: readonly { feedType: string; since?: string }[] = [
+    { feedType: 'official' },
+    { feedType: 'rim', since: MEMBER_TRANSLATE_SINCE },
+    { feedType: 'harusaruhi', since: MEMBER_TRANSLATE_SINCE },
+    { feedType: 'isekaijoucho', since: MEMBER_TRANSLATE_SINCE },
+    { feedType: 'koko', since: MEMBER_TRANSLATE_SINCE },
+];
 
 // USD per 1M tokens for each provider's model — update model and price together.
 // Claude Haiku 5.5 has a second, 5x rate card above 100K-token prompts; these
@@ -225,15 +232,17 @@ async function main() {
     const queuedIds = new Set<string>();
     const queuedBy: string[] = [];
 
-    for (const feedType of FEED_PRIORITY) {
+    for (const { feedType, since } of FEED_PRIORITY) {
         if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
 
-        const { data: candidates, error } = await db
+        let query = db
             .from('kaf_posts')
             .select('id, external_id, original_text')
             .is('translation', null)
             .eq('source_type', 'x')
-            .contains('seen_in', [feedType])
+            .contains('seen_in', [feedType]);
+        if (since) query = query.gte('published_at', since);
+        const { data: candidates, error } = await query
             .order('published_at', { ascending: false })
             .limit(MAX_TRANSLATIONS_PER_RUN * 5);
 
@@ -246,7 +255,7 @@ async function main() {
         const nothingToTranslate: string[] = [];
         for (const post of (candidates ?? []) as PostRow[]) {
             if (queue.length >= MAX_TRANSLATIONS_PER_RUN) break;
-            // A row in two tabs (official tweet about 可不) is a candidate twice.
+            // A row in two tabs (KAF retweeting a member) is a candidate twice.
             if (queuedIds.has(post.id)) continue;
             queuedIds.add(post.id);
             const input = translateInput(post.original_text);

@@ -60,7 +60,7 @@ The fetch step raises a `Feed health` annotation when a feed fails, returns 0 en
 
 `gh run view <id> --log` returns only the latest run's log; for older runs fetch the zip with `gh api repos/<owner>/kaf-posts-ingest/actions/runs/<id>/logs > l.zip`.
 
-Throughput: with only the official tier queued (since 2026-11-19), demand is about 2–3 posts/day (22 official rows over 2026-11-01..09) against a capacity of 10 per run × 24 runs/day = 240/day. Before that, the fan search brought it to 67/day.
+Throughput: official plus the four V.W.P member tiers (since 2026-11-20) come to about 17 translatable posts/day (official 2–3; members 438 over 2026-10-20..11-18, peak 39/day across all six talents), against a capacity of 10 per run × 24 runs/day = 240/day. At about US$0.0004 per post (Claude Haiku, measured from run logs) that is about US$0.2/month. Before that, the fan search brought it to 67/day.
 
 ## Feed hygiene
 
@@ -68,7 +68,7 @@ Throughput: with only the official tier queued (since 2026-11-19), demand is abo
 
 - Search-backed sources carry a `mustMatch` regex; failures are dropped before insert and logged as `dropped N off-topic entries`. The regex sees only the tweet body (`tweetBody.ts` strips rss.app's trailing `— @handle date` line), otherwise any handle containing `kaf` passes. Account timelines have no gate.
 - Every source needs a `maxQuietHours` above the longest gap the feed has shown between posts, or the health check warns on normal quiet spells.
-- Talent feeds use the talents' main X accounts, not the `*_staff` ones: main accounts retweet staff announcements and add the day-of "starting soon" posts (measured on @RIM_virtual vs @rim_staff, 2026-10-10). They exist for the streams step, because members-only streams never appear in the public live playlists. `translate.ts` does not queue them.
+- Talent feeds use the talents' main X accounts, not the `*_staff` ones: main accounts retweet staff announcements and add the day-of "starting soon" posts (measured on @RIM_virtual vs @rim_staff, 2026-10-10). They exist for the streams step, because members-only streams never appear in the public live playlists. `translate.ts` queues only the V.W.P members (see Translation).
 
 ### One row per tweet
 
@@ -78,7 +78,7 @@ Search feeds marked `fansOnly` store tweets authored by a known account (`KNOWN_
 
 ## Translation
 
-`translate.ts` fills each run's queue by tier in `FEED_PRIORITY` order (matched on `seen_in`); a lower tier only gets slots the tiers above left unused. Only `official` is listed since the fan and kafu searches were removed (2026-11-19). Talent tiers are absent until the front end has tabs for them; do not add a new type to `FEED_PRIORITY` before that.
+`translate.ts` fills each run's queue by tier in `FEED_PRIORITY` order (matched on `seen_in`); a lower tier only gets slots the tiers above left unused. Tiers: `official`, then the V.W.P members `rim`, `harusaruhi`, `isekaijoucho`, `koko` (one Reader tab each). Member tiers only take rows published on or after `MEMBER_TRANSLATE_SINCE` (2026-11-20 00:00 Taiwan time): earlier member rows stay untranslated by decision, no backfill. ASU and CIEL feeds have no tab and are not translated; they exist for the streams step. The fan and kafu tiers were removed with their search feeds (2026-11-19). Talent tiers are absent until the front end has tabs for them; do not add a new type to `FEED_PRIORITY` before that.
 
 Before queueing, `translateInput.ts` strips rss.app's trailing `— Name (@handle) date` line (it was 30% of input characters and came back translated) and inlined quoted-tweet bodies. Kanji alone does not count as Japanese: Chinese fan posts passed a kanji test and came back translated into Japanese (2026-10-11).
 
