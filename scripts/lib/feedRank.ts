@@ -1,11 +1,10 @@
-export type FeedType = 'official' | 'fan' | 'kafu' | 'rim' | 'harusaruhi' | 'isekaijoucho' | 'koko' | 'ciel' | 'asu';
+export type FeedType = 'official' | 'rim' | 'harusaruhi' | 'isekaijoucho' | 'koko' | 'ciel' | 'asu';
 
-// One tweet can sit in several feeds (the fan search finds 花譜's own tweets,
-// official accounts retweet talents, talents retweet official). kaf_posts
+// One tweet can sit in several feeds (official accounts retweet talents,
+// talents retweet official and each other). kaf_posts
 // keeps one row per external_id: `seen_in` lists every feed that saw it
 // (Reader tabs filter on containment) and `feed_type` is the single owner
-// used for translation priority — the highest-ranked member. Rank is
-// deliberate: talents sit above kafu/fan (decision 2026-10-10).
+// used for translation priority — the highest-ranked member.
 const RANK: Record<FeedType, number> = {
     official: 3,
     rim: 2,
@@ -14,13 +13,12 @@ const RANK: Record<FeedType, number> = {
     koko: 2,
     ciel: 2,
     asu: 2,
-    kafu: 1,
-    fan: 0,
 };
 
 // Lowercase X handles (tweetAuthor lowercases) of the accounts that have a
 // feed of their own. Must stay in sync with the account feeds in
-// scripts/fetch.ts SOURCES and kaf-observatory lib/reader/retweet.ts.
+// scripts/fetch.ts SOURCES and kaf-observatory src/lib/schedule/roster.ts
+// (xHandles).
 export const KNOWN_AUTHORS: Record<string, FeedType> = {
     virtual_kaf: 'official',
     kaf_info: 'official',
@@ -35,13 +33,10 @@ export const KNOWN_AUTHORS: Record<string, FeedType> = {
 /**
  * Feeds an entry belongs to when `source` fetched it: the source plus the
  * author's own feed, which contains the tweet by definition whether or not
- * its 25-item window still shows it. The topical kafu search follows the
- * same rule. A fans-only feed is the exception: a known account's tweet is
- * that account's, not a fan post ("fan = fans", decision 2026-10-11).
+ * its 25-item window still shows it.
  */
-export function memberships(source: FeedType, author: string | null, fansOnly: boolean): FeedType[] {
+export function memberships(source: FeedType, author: string | null): FeedType[] {
     const own = author ? KNOWN_AUTHORS[author] : undefined;
-    if (fansOnly) return [own ?? source];
     return own && own !== source ? [source, own] : [source];
 }
 

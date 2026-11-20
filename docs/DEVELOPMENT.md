@@ -56,29 +56,28 @@ If runs stop: check the scheduler job's last status first (401 = PAT revoked or 
 
 Per-row failures are caught and never change the exit code (12 days of `Translated 0/10` hid behind green badges in July 2026). A healthy log shows `Total new posts`, `Translated N/N` with N > 0 whenever a backlog exists, and `new=… refreshed=…` from the streams step.
 
-The fetch step raises a `Feed health` annotation when a feed fails, returns 0 entries, has a newest entry older than its `maxQuietHours`, or loses more than half its entries to `mustMatch`. The job summary carries a per-feed table (entries / dropped / new / retagged / joined / newest / warnings).
+The fetch step raises a `Feed health` annotation when a feed fails, returns 0 entries, or has a newest entry older than its `maxQuietHours`. The job summary carries a per-feed table (entries / new / retagged / joined / newest / warnings).
 
 `gh run view <id> --log` returns only the latest run's log; for older runs fetch the zip with `gh api repos/<owner>/kaf-posts-ingest/actions/runs/<id>/logs > l.zip`.
 
-Throughput: official plus the four V.W.P member tiers (since 2026-11-20) come to about 17 translatable posts/day (official 2–3; members 438 over 2026-10-20..11-18, peak 39/day across all six talents), against a capacity of 10 per run × 24 runs/day = 240/day. At about US$0.0004 per post (Claude Haiku, measured from run logs) that is about US$0.2/month. Before that, the fan search brought it to 67/day.
+Throughput: official plus the four V.W.P member tiers (since 2026-11-20) come to about 17 translatable posts/day (official 2–3; members 438 over 2026-10-20..11-18, peak 39/day across all six talents), against a capacity of 10 per run × 24 runs/day = 240/day. At about US$0.0004 per post (Claude Haiku, measured from run logs) that is about US$0.2/month.
 
 ## Feed hygiene
 
-`SOURCES` in `scripts/fetch.ts` holds account timelines only. The three rss.app wrappers around `x.com/search?q=…` (fan Top, fan Latest, kafu) stopped updating on 2026-11-10 and were removed on 2026-11-19; rss.app no longer creates new X feeds, so they cannot be rebuilt there. Their rows stay in `kaf_posts`. The notes below apply if a search source ever comes back: they were about 10% off-topic. X loosely matches CJK search terms: they get token-split (`板倉可奈　永久不滅` matches 可+不, `瀧廉太郎の「花」の自筆譜` matches 花+譜), the Top tab expands further, and account handles count as matches. Measured against 5784 archived rows, 10% of fan and 9% of kafu entries mentioned no form of the subject.
+`SOURCES` in `scripts/fetch.ts` holds X account timelines only. rss.app no longer creates new X feeds (2026-11), so a feed that breaks cannot be rebuilt there.
 
-- Search-backed sources carry a `mustMatch` regex; failures are dropped before insert and logged as `dropped N off-topic entries`. The regex sees only the tweet body (`tweetBody.ts` strips rss.app's trailing `— @handle date` line), otherwise any handle containing `kaf` passes. Account timelines have no gate.
 - Every source needs a `maxQuietHours` above the longest gap the feed has shown between posts, or the health check warns on normal quiet spells.
 - Talent feeds use the talents' main X accounts, not the `*_staff` ones: main accounts retweet staff announcements and add the day-of "starting soon" posts (measured on @RIM_virtual vs @rim_staff, 2026-10-10). They exist for the streams step, because members-only streams never appear in the public live playlists. `translate.ts` queues only the V.W.P members (see Translation).
 
 ### One row per tweet
 
-A tweet can sit in several feeds, but `kaf_posts` keeps one row per `external_id`. `seen_in` lists every feed that saw it (front-end tabs filter on containment), and `feed_type` is the single owner used for translation priority: the highest rank in `feedRank.ts` (official > talent accounts > kafu > fan). When a higher feed meets a row a lower one stored first, `fetch.ts` updates `seen_in` and, if the owner changes, `feed_type` (logged per feed, and the `retagged` / `joined` columns of the job summary).
+A tweet can sit in several feeds, but `kaf_posts` keeps one row per `external_id`. `seen_in` lists every feed that saw it (front-end tabs filter on containment), and `feed_type` is the single owner used for translation priority: the highest rank in `feedRank.ts` (official > talent accounts). When a higher feed meets a row a lower one stored first, `fetch.ts` updates `seen_in` and, if the owner changes, `feed_type` (logged per feed, and the `retagged` / `joined` columns of the job summary).
 
-Search feeds marked `fansOnly` store tweets authored by a known account (`KNOWN_AUTHORS` in `feedRank.ts`, author read from the tweet URL by `tweetAuthor.ts`) under that account only, never as `fan`. Retweets carry the original author's URL, so for them the membership path applies. `KNOWN_AUTHORS` must stay in sync with the account feeds in `SOURCES` and with the front end's retweet handling.
+Each feed also adds the author's own feed (`KNOWN_AUTHORS` in `feedRank.ts`, author read from the tweet URL by `tweetAuthor.ts`): rss.app links a retweet to the original tweet, so a 花譜 retweet of 理芽 is one row seen in both. `KNOWN_AUTHORS` must stay in sync with the account feeds in `SOURCES` and with the `xHandles` in kaf-observatory's roster.
 
 ## Translation
 
-`translate.ts` fills each run's queue by tier in `FEED_PRIORITY` order (matched on `seen_in`); a lower tier only gets slots the tiers above left unused. Tiers: `official`, then the V.W.P members `rim`, `harusaruhi`, `isekaijoucho`, `koko` (one Reader tab each). Member tiers only take rows published on or after `MEMBER_TRANSLATE_SINCE` (2026-11-20 00:00 Taiwan time): earlier member rows stay untranslated by decision, no backfill. ASU and CIEL feeds have no tab and are not translated; they exist for the streams step. The fan and kafu tiers were removed with their search feeds (2026-11-19). Talent tiers are absent until the front end has tabs for them; do not add a new type to `FEED_PRIORITY` before that.
+`translate.ts` fills each run's queue by tier in `FEED_PRIORITY` order (matched on `seen_in`); a lower tier only gets slots the tiers above left unused. Tiers: `official`, then the V.W.P members `rim`, `harusaruhi`, `isekaijoucho`, `koko` (one Reader tab each). Member tiers only take rows published on or after `MEMBER_TRANSLATE_SINCE` (2026-11-20 00:00 Taiwan time): earlier member rows stay untranslated by decision, no backfill. ASU and CIEL feeds have no tab and are not translated; they exist for the streams step. Do not add a type to `FEED_PRIORITY` without a Reader tab for it.
 
 Before queueing, `translateInput.ts` strips rss.app's trailing `— Name (@handle) date` line (it was 30% of input characters and came back translated) and inlined quoted-tweet bodies. Kanji alone does not count as Japanese: Chinese fan posts passed a kanji test and came back translated into Japanese (2026-10-11).
 
@@ -91,7 +90,7 @@ Claude runs with thinking disabled, effort `low`, and structured outputs: the Ge
 - `scripts/translate.ts` → `MAX_TRANSLATIONS_PER_RUN` (default `10`): the per-run hard cap and the circuit-breaker on model API usage. Raising it, or the scheduler frequency, raises the ceiling proportionally.
 - `scripts/translate.ts` → `CLAUDE_MODEL` / `GEMINI_MODEL` together with `PRICES`; change them together or the logged estimate is wrong. A `404` from either provider usually means the model was retired, not that the key broke (Google did this 2026-07-15).
 - `scripts/translate.ts` → `FEED_PRIORITY`: the drain order above.
-- `scripts/fetch.ts` → `SOURCES`: add or remove feeds (add the new key and id to the `RSS_FEEDS` secret and your `.env` first). Search-backed feeds need `mustMatch`; every feed needs `maxQuietHours`.
+- `scripts/fetch.ts` → `SOURCES`: add or remove feeds (add the new key and id to the `RSS_FEEDS` secret and your `.env` first). Every feed needs `maxQuietHours`.
 - Run frequency lives in the external scheduler, not in the workflow file.
 
 ## Streams (live schedule)
@@ -102,7 +101,7 @@ Claude runs with thinking disabled, effort `low`, and structured outputs: the Ge
 2. scans the `TWEET_FEEDS` (official and talent accounts, same rss.app feeds as `fetch.ts`) for YouTube links (`extractVideoIds`, full 11-char IDs only). `members_only` comes from the text after each link (メンバーシップ限定 / メン限 / membership) or the video title; the Data API has no such flag;
 3. looks up new IDs plus stale `upcoming`/`live` rows (up to 50, older than 30 minutes) with one `videos.list` call per 50 IDs (1 quota unit each);
 4. keeps a video on an off-roster channel only when a tweet linked it and it is a live stream or premiere (`assembleRows.ts`): a guest appearance. Retweeted MVs and covers on other channels are dropped. Non-YouTube appearances are out of scope;
-5. upserts on `video_id`. Nothing is written to `kaf_posts` (fan or search feeds here would turn every linked stream into an event).
+5. upserts on `video_id`. Nothing is written to `kaf_posts` (a feed of other people's tweets here would turn every linked stream into an event).
 
 Row shape is `StreamRow` in `scripts/lib/youtube.ts`; `status` is one of `upcoming` / `live` / `ended` / `published` / `unavailable`.
 

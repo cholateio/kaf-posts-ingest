@@ -5,51 +5,39 @@ const row = (id: string, feed_type: string, seen_in: string[]) => ({ external_id
 
 describe('memberships', () => {
     it("a timeline feed adds itself and the author's own feed (talent retweets an official tweet)", () => {
-        expect(memberships('rim', 'virtual_kaf', false)).toEqual(['rim', 'official']);
-        expect(memberships('official', 'rim_virtual', false)).toEqual(['official', 'rim']);
+        expect(memberships('rim', 'virtual_kaf')).toEqual(['rim', 'official']);
+        expect(memberships('official', 'rim_virtual')).toEqual(['official', 'rim']);
     });
     it('a timeline feed with its own author is just itself', () => {
-        expect(memberships('rim', 'rim_virtual', false)).toEqual(['rim']);
-        expect(memberships('official', 'kaf_info', false)).toEqual(['official']);
-    });
-    it('a fans-only search feed files a known author under that account only, never fan', () => {
-        expect(memberships('fan', 'rim_virtual', true)).toEqual(['rim']);
-        expect(memberships('fan', 'virtual_kaf', true)).toEqual(['official']);
-        expect(memberships('fan', 'someone_else', true)).toEqual(['fan']);
-    });
-    it('the topical kafu search keeps kafu and adds the known author (CIEL tweeting about 可不)', () => {
-        expect(memberships('kafu', 'ciel_vanillasky', false)).toEqual(['kafu', 'ciel']);
-        expect(memberships('kafu', 'virtual_kaf', false)).toEqual(['kafu', 'official']);
-        expect(memberships('kafu', 'someone_else', false)).toEqual(['kafu']);
+        expect(memberships('rim', 'rim_virtual')).toEqual(['rim']);
+        expect(memberships('official', 'kaf_info')).toEqual(['official']);
     });
     it('an anonymous /i/status URL (author null) adds nothing beyond the source', () => {
-        expect(memberships('fan', null, true)).toEqual(['fan']);
-        expect(memberships('rim', null, false)).toEqual(['rim']);
+        expect(memberships('rim', null)).toEqual(['rim']);
     });
     it('handles are matched lowercase (tweetAuthor lowercases; KNOWN_AUTHORS keys must too)', () => {
-        expect(memberships('fan', 'ciel_vanillasky', true)).toEqual(['ciel']);
-        expect(memberships('fan', 'isekaijoucho', true)).toEqual(['isekaijoucho']);
-        expect(memberships('fan', 'harusaruhi', true)).toEqual(['harusaruhi']);
-        expect(memberships('fan', 'koko__virtual', true)).toEqual(['koko']);
-        expect(memberships('fan', 'asu_virtual', true)).toEqual(['asu']);
+        expect(memberships('official', 'ciel_vanillasky')).toEqual(['official', 'ciel']);
+        expect(memberships('official', 'isekaijoucho')).toEqual(['official', 'isekaijoucho']);
+        expect(memberships('official', 'harusaruhi')).toEqual(['official', 'harusaruhi']);
+        expect(memberships('official', 'koko__virtual')).toEqual(['official', 'koko']);
+        expect(memberships('official', 'asu_virtual')).toEqual(['official', 'asu']);
     });
     it('a talent retweeting 幸祜 puts the row in both talent feeds', () => {
-        expect(memberships('rim', 'koko__virtual', false)).toEqual(['rim', 'koko']);
+        expect(memberships('rim', 'koko__virtual')).toEqual(['rim', 'koko']);
     });
 });
 
 describe('ownerOf', () => {
-    it('picks the highest-ranked type: official > talent > kafu > fan', () => {
+    it('picks the highest-ranked type: official > talent', () => {
         expect(ownerOf(['rim', 'official'])).toBe('official');
-        expect(ownerOf(['fan', 'kafu'])).toBe('kafu');
         expect(ownerOf(['harusaruhi', 'rim'])).toBe('harusaruhi'); // tie: first wins
     });
 });
 
 describe('membershipPatches', () => {
-    it('appends the new memberships and retags the owner when outranked (official claims a fan row)', () => {
-        expect(membershipPatches(['official'], [row('a', 'fan', ['fan'])])).toEqual([
-            { ids: ['a'], patch: { feed_type: 'official', seen_in: ['fan', 'official'] } },
+    it('appends the new memberships and retags the owner when outranked (official claims a talent row)', () => {
+        expect(membershipPatches(['official'], [row('a', 'rim', ['rim'])])).toEqual([
+            { ids: ['a'], patch: { feed_type: 'official', seen_in: ['rim', 'official'] } },
         ]);
     });
     it('appends without retag when not outranked (talent feed sees an official-owned row)', () => {
@@ -63,12 +51,12 @@ describe('membershipPatches', () => {
         ]);
     });
     it('skips rows that already carry every membership', () => {
-        expect(membershipPatches(['fan'], [row('a', 'official', ['official', 'fan']), row('b', 'fan', ['fan'])])).toEqual([]);
+        expect(membershipPatches(['rim'], [row('a', 'official', ['official', 'rim']), row('b', 'rim', ['rim'])])).toEqual([]);
     });
     it('groups rows that end up with the same patch into one update', () => {
-        expect(membershipPatches(['official'], [row('a', 'fan', ['fan']), row('b', 'fan', ['fan']), row('c', 'kafu', ['kafu'])])).toEqual([
-            { ids: ['a', 'b'], patch: { feed_type: 'official', seen_in: ['fan', 'official'] } },
-            { ids: ['c'], patch: { feed_type: 'official', seen_in: ['kafu', 'official'] } },
+        expect(membershipPatches(['official'], [row('a', 'rim', ['rim']), row('b', 'rim', ['rim']), row('c', 'koko', ['koko'])])).toEqual([
+            { ids: ['a', 'b'], patch: { feed_type: 'official', seen_in: ['rim', 'official'] } },
+            { ids: ['c'], patch: { feed_type: 'official', seen_in: ['koko', 'official'] } },
         ]);
     });
     it('a legacy feed_type it does not rank keeps its owner but still gains membership', () => {

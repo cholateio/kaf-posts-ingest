@@ -50,8 +50,8 @@ export const STREAM_CHANNEL_IDS: string[] = [
 // kaf_posts from here (that would leak into the Reader's "all" tab).
 // Keep in sync with fetch.ts SOURCES (same rss.app feeds). Official and
 // talent accounts only: a live/premiere they link on an off-roster channel is
-// stored as a guest appearance (assembleRows.ts), so a fan/search feed here
-// would turn every linked stream into an event.
+// stored as a guest appearance (assembleRows.ts), so a feed of other people's
+// tweets here would turn every linked stream into an event.
 export const TWEET_FEEDS: string[] = [
     feedUrl('official-kaf'), // @virtual_kaf
     feedUrl('official-info'), // @kaf_info

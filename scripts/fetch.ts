@@ -15,7 +15,6 @@ import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
 import { appendFileSync } from 'node:fs';
 import { feedWarnings } from './lib/feedHealth';
-import { tweetBody } from './lib/tweetBody';
 import { memberships, membershipPatches, ownerOf, type ExistingRow, type FeedType } from './lib/feedRank';
 import { tweetAuthor } from './lib/tweetAuthor';
 import { isRetained } from './lib/retention';
@@ -32,39 +31,13 @@ const parser = new Parser<Record<string, never>, { 'media:content': MediaContent
 
 interface Source {
     name: string;
-    // Talent ids match kaf-observatory/src/lib/schedule/roster.ts so a Reader
-    // tab per talent can key on them later. Only official is translated
-    // today; talent rows exist for streams.ts.
+    // Talent ids match kaf-observatory/src/lib/schedule/roster.ts: the
+    // Reader tabs and translate.ts FEED_PRIORITY key on them.
     feedType: FeedType;
     rssUrl: string;
     /**
-     * Relevance gate for search-backed feeds only.
-     *
-     * X search results are loosely related — CJK
-     * queries get token-split (`板倉可奈　永久不滅` matches 可+不; `瀧廉太郎の
-     * 「花」の自筆譜` matches 花+譜) and the Top tab expands further. Measured
-     * against 5784 archived rows of the former fan (花譜) and kafu (可不 kafu)
-     * searches: 10% of fan and 9% of kafu entries mention no
-     * form of the subject at all, with zero legitimate posts caught by these
-     * patterns. Account timelines need no gate. Tested against the tweet body
-     * only (tweetBody.ts): the trailing "— @handle date" line would let
-     * @KAFfeine_max-style handles through (45/3358 archived fan rows).
-     */
-    mustMatch?: RegExp;
-    /**
-     * "Fan = fans" (decision 2026-10-11): a hit authored by a known account
-     * is filed under that account only and never gets `fan` membership
-     * (feedRank.memberships). Storing it under the account at once also
-     * keeps the tweet if the official feed is down (codex review
-     * 2026-10-10). The kafu search is topical and does not set this: a
-     * talent's tweet about 可不 stays in the Kafu tab. Retweets are
-     * unaffected — their URL is the original author's.
-     */
-    fansOnly?: true;
-    /**
-     * Warn when the feed's newest entry is older than this. Set from the
-     * longest gap between consecutive archived posts (2026-07..10): fan 11.5h,
-     * kafu 39h, account timelines ~7d.
+     * Warn when the feed's newest entry is older than this. Account
+     * timelines went up to ~7d between posts in 2026-07..10.
      */
     maxQuietHours: number;
 }
@@ -154,7 +127,6 @@ async function parseRssFeed(feedUrl: string): Promise<RssEntry[]> {
 interface FeedReport {
     name: string;
     entries: number;
-    dropped: number;
     inserted: number;
     retagged: number;
     joined: number;
@@ -174,11 +146,11 @@ function reportFeedHealth(report: FeedReport[]) {
     const now = Date.now();
     const lines = [
         '### Feeds',
-        '| feed | entries | dropped | new | retagged | joined | newest | warnings |',
-        '| --- | --: | --: | --: | --: | --: | --: | --- |',
+        '| feed | entries | new | retagged | joined | newest | warnings |',
+        '| --- | --: | --: | --: | --: | --: | --- |',
         ...report.map((r) => {
             const age = r.newestIso ? `${Math.floor((now - Date.parse(r.newestIso)) / 3600_000)}h ago` : '-';
-            return `| ${r.name} | ${r.entries} | ${r.dropped} | ${r.inserted} | ${r.retagged} | ${r.joined} | ${age} | ${r.warnings.join('; ') || 'ok'} |`;
+            return `| ${r.name} | ${r.entries} | ${r.inserted} | ${r.retagged} | ${r.joined} | ${age} | ${r.warnings.join('; ') || 'ok'} |`;
         }),
         '',
     ];
@@ -199,7 +171,7 @@ async function main() {
     const report: FeedReport[] = [];
 
     for (const source of SOURCES) {
-        const row: FeedReport = { name: source.name, entries: 0, dropped: 0, inserted: 0, retagged: 0, joined: 0, newestIso: null, warnings: [] };
+        const row: FeedReport = { name: source.name, entries: 0, inserted: 0, retagged: 0, joined: 0, newestIso: null, warnings: [] };
         report.push(row);
         try {
             console.log(`Fetching ${source.name}...`);
@@ -207,26 +179,14 @@ async function main() {
             row.entries = entries.length;
             row.newestIso = entries.reduce<string | null>((max, e) => (max && max > e.publishedAt ? max : e.publishedAt), null);
 
-            const relevant = source.mustMatch
-                ? entries.filter((e) => source.mustMatch!.test(tweetBody(e.text)))
-                : entries;
-            const typesOf = (e: RssEntry): FeedType[] => memberships(source.feedType, tweetAuthor(e.externalId), !!source.fansOnly);
-            row.dropped = entries.length - relevant.length;
+            const typesOf = (e: RssEntry): FeedType[] => memberships(source.feedType, tweetAuthor(e.externalId));
             row.warnings = feedWarnings({ ...row, maxQuietHours: source.maxQuietHours, now: new Date() });
 
             if (entries.length === 0) {
                 console.log(`  ${source.name}: 0 entries in feed`);
                 continue;
             }
-            if (row.dropped > 0) {
-                console.log(`  ${source.name}: dropped ${row.dropped} off-topic entries`);
-            }
-            if (relevant.length === 0) {
-                console.log(`  ${source.name}: 0 relevant entries in feed`);
-                continue;
-            }
-
-            const externalIds = relevant.map((e) => e.externalId);
+            const externalIds = entries.map((e) => e.externalId);
             const { data: existing, error: exErr } = await db
                 .from('kaf_posts')
                 .select('external_id, feed_type, seen_in')
@@ -235,7 +195,7 @@ async function main() {
 
             // Entries resolve to different membership sets (known authors), so
             // group existing rows by set before computing patches.
-            const typesById = new Map(relevant.map((e) => [e.externalId, typesOf(e)]));
+            const typesById = new Map(entries.map((e) => [e.externalId, typesOf(e)]));
             const byTypes = new Map<string, { types: FeedType[]; rows: ExistingRow[] }>();
             for (const ex of existing ?? []) {
                 const types = typesById.get(ex.external_id) ?? [source.feedType];
@@ -255,10 +215,10 @@ async function main() {
             }
 
             const existingIds = new Set((existing ?? []).map((p: { external_id: string }) => p.external_id));
-            const newEntries = relevant.filter((e) => !existingIds.has(e.externalId) && isRetained(e.externalId, e.publishedAt));
+            const newEntries = entries.filter((e) => !existingIds.has(e.externalId) && isRetained(e.externalId, e.publishedAt));
 
             if (newEntries.length === 0) {
-                console.log(`  ${source.name}: 0 new (${relevant.length} already exist)`);
+                console.log(`  ${source.name}: 0 new (${entries.length} already exist)`);
                 continue;
             }
 

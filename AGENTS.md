@@ -22,7 +22,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Claude Haiku 5.5 翻譯未�
 
 ## File layout
 
-- `scripts/fetch.ts` — 抓 SOURCES 內 8 個 rss.app feed（花譜 2 帳號 + 6 位成員主帳號；3 個搜尋 feed 於 2026-11-19 停擺後移除，rss.app 已不能新建 X feed），去重後 insert 進 `kaf_posts`；每個看到該列的 feed 把自己的歸屬併進 `seen_in`（`feedRank.memberships`），`feed_type` = rank 最高的 owner
+- `scripts/fetch.ts` — 抓 SOURCES 內 8 個 rss.app 帳號 feed（花譜 2 帳號 + 6 位成員主帳號；rss.app 已不能新建 X feed），去重後 insert 進 `kaf_posts`；每個看到該列的 feed 把自己的歸屬併進 `seen_in`（`feedRank.memberships`），`feed_type` = rank 最高的 owner
 - `scripts/translate.ts` — 取未翻譯列（每輪 ≤10 硬上限，tier 依 `seen_in`：official → V.W.P 成員 rim/harusaruhi/isekaijoucho/koko（成員只翻 2026-11-20 起的貼文，不補翻））跑 Claude（或 Gemini），回寫翻譯欄位
 - `scripts/streams.ts` — 直播時程發現：名冊頻道 UULV/UULF RSS + 推文連結 → `videos.list` → upsert `kaf_streams`（見 `docs/DEVELOPMENT.md`「Streams」）
 - `scripts/lib/` — 純函式（`videoIds` / `rssDiscovery` / `youtube` / `assembleRows` / `membersOnly` / `tweetBody` / `tweetAuthor` / `translateInput` / `translateProvider` / `feedRank` / `feedHealth` / `stripNul` / `feeds`）+ `__tests__/`
@@ -34,7 +34,7 @@ RSS feed，寫入 Supabase `kaf_posts` 表，再用 Claude Haiku 5.5 翻譯未�
 
 - `ingest.yml` 不得加回 `schedule:`（被停用的 workflow 也會拒絕 workflow_dispatch，外部觸發會一起斷）。
 - 10/1 前的貼文已刪除，`scripts/lib/retention.ts` 擋回流；不要繞過。
-- 金鑰只放 gitignored 的 `.env`（名稱見 `.env.example`）或 Actions secrets，絕不進 git。rss.app feed id 也算（付費能力）：程式碼只寫 key（`feedUrl('kafu')`），id 放 `RSS_FEEDS`。
+- 金鑰只放 gitignored 的 `.env`（名稱見 `.env.example`）或 Actions secrets，絕不進 git。rss.app feed id 也算（付費能力）：程式碼只寫 key（`feedUrl('rim')`），id 放 `RSS_FEEDS`。
 - Path-type constraints are mirrored in `kit.toml [protected]`; keep the two in sync (one glob per line).
 
 ## Conventions
