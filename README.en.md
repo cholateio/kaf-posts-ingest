@@ -22,7 +22,7 @@ Nothing new or stale. Done.
 
 - **Translations for learners**: each Japanese post gets a Traditional Chinese translation that keeps its line breaks, 5–8 vocabulary words with readings, and 1–3 grammar patterns, stored as JSON next to the original text.
 - **Skips what needs no translation**: posts with no kana or under 4 characters of real text are marked as nothing to translate.
-- **One row per tweet**: a tweet seen in several feeds is stored once and filed under the most authoritative one (official over talent accounts), and only official posts are translated, at most 10 per run.
+- **One row per tweet**: a tweet seen in several feeds is stored once and filed under the most authoritative one (official over talent accounts). Official posts and V.W.P member posts from 2026-11-20 on are translated, at most 10 per run.
 - **Stream schedule**: each roster channel's live and uploads playlists, plus YouTube links in official and talent tweets, are looked up on the YouTube Data API and saved with status, start and end times, and premiere and members-only flags.
 
 Input and output for one feed:
@@ -54,12 +54,12 @@ There is no server and no public endpoint. The worker only writes to Supabase; a
 
 ## Install
 
-You need a GitHub account, a Supabase project, an Anthropic API key for Claude, a Google Cloud API key limited to YouTube Data API v3, [rss.app](https://rss.app) feeds for the X accounts and searches you follow, and something that can send an HTTP request every hour.
+You need a GitHub account, a Supabase project, an Anthropic API key for Claude, a Google Cloud API key limited to YouTube Data API v3, [rss.app](https://rss.app) feeds for the X accounts you follow, and something that can send an HTTP request every hour.
 
 1. Fork the repo.
 2. In Supabase, create the `kaf_posts` and `kaf_streams` tables with the columns above, plus `id` and `source_type` on `kaf_posts`. `external_id` and `video_id` must be unique, `seen_in` is a text array, and `vocabulary` and `grammar` are `jsonb`. The exact writes are in `scripts/fetch.ts`, `scripts/translate.ts` and `StreamRow` in `scripts/lib/youtube.ts`.
 3. Edit the sources: feed keys in `SOURCES` (`scripts/fetch.ts`) and `TWEET_FEEDS`, channel IDs in `STREAM_CHANNEL_IDS` (`scripts/streams.ts`), and the cutoff date in `scripts/lib/retention.ts`, which ignores tweets published before 1 October 2026.
-4. In your fork, open **Settings → Secrets and variables → Actions → New repository secret** and add five secrets: `SUPABASE_URL` with your project URL, `SUPABASE_SERVICE_KEY` with the service-role key, `ANTHROPIC_API_KEY`, `YOUTUBE_API_KEY`, and `RSS_FEEDS` with a JSON object mapping each feed key used in `scripts/fetch.ts` to its rss.app feed id, for example `{"kafu":"<id>"}`. To translate with Google Gemini instead, also add a `GEMINI_API_KEY` secret and, on the **Variables** tab of the same page, a `TRANSLATE_PROVIDER` variable set to `gemini`.
+4. In your fork, open **Settings → Secrets and variables → Actions → New repository secret** and add five secrets: `SUPABASE_URL` with your project URL, `SUPABASE_SERVICE_KEY` with the service-role key, `ANTHROPIC_API_KEY`, `YOUTUBE_API_KEY`, and `RSS_FEEDS` with a JSON object mapping each feed key used in `scripts/fetch.ts` to its rss.app feed id, for example `{"rim":"<id>"}`. To translate with Google Gemini instead, also add a `GEMINI_API_KEY` secret and, on the **Variables** tab of the same page, a `TRANSLATE_PROVIDER` variable set to `gemini`.
 5. Open **Actions → Ingest → Run workflow** and read the log of the first run.
 6. Have your scheduler send `POST https://api.github.com/repos/<you>/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches` with the body `{"ref":"main"}` every hour, authorised by a fine-grained token limited to this repo with **Actions: Read and write**. The workflow has no built-in schedule.
 

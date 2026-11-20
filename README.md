@@ -22,7 +22,7 @@ Nothing new or stale. Done.
 
 - **給學習者的翻譯**：每則日文貼文都有一份保留原本換行的繁體中文翻譯、5–8 個附讀音的單字，以及 1–3 個文法句型，以 JSON 存在原文旁邊。
 - **略過不需翻譯的貼文**：沒有假名、或實際文字不到 4 個字的貼文，會標記為不需翻譯。
-- **一則推文一列**：同一則推文出現在好幾個 feed 時只存一次，並歸到最權威的那個 feed（官方優先於成員帳號）；只翻譯官方貼文，每次執行最多 10 則。
+- **一則推文一列**：同一則推文出現在好幾個 feed 時只存一次，並歸到最權威的那個 feed（官方優先於成員帳號）；翻譯官方貼文和 V.W.P 成員 2026-11-20 起的貼文，每次執行最多 10 則。
 - **直播時程**：名冊上每個頻道的直播與上傳播放清單，加上官方和成員推文裡的 YouTube 連結，都會透過 YouTube Data API 查詢，存下狀態、開始與結束時間，以及首播和會員限定的標記。
 
 單一 feed 的輸入與輸出：
@@ -54,12 +54,12 @@ feed、頻道清單和過濾條件都是針對 KAF 和 KAMITSUBAKI 的成員名�
 
 ## 安裝
 
-需要：GitHub 帳號、Supabase 專案、給 Claude 用的 Anthropic API key、限定只能呼叫 YouTube Data API v3 的 Google Cloud API key、你追蹤的 X 帳號和搜尋所對應的 [rss.app](https://rss.app) feed，以及一個能每小時送出 HTTP 請求的東西。
+需要：GitHub 帳號、Supabase 專案、給 Claude 用的 Anthropic API key、限定只能呼叫 YouTube Data API v3 的 Google Cloud API key、你追蹤的 X 帳號所對應的 [rss.app](https://rss.app) feed，以及一個能每小時送出 HTTP 請求的東西。
 
 1. Fork 本 repo。
 2. 在 Supabase 建立 `kaf_posts` 和 `kaf_streams` 兩張資料表，欄位如上，`kaf_posts` 另外加上 `id` 和 `source_type`。`external_id` 和 `video_id` 必須唯一，`seen_in` 是 text 陣列，`vocabulary` 和 `grammar` 是 `jsonb`。實際寫入的內容請看 `scripts/fetch.ts`、`scripts/translate.ts`，以及 `scripts/lib/youtube.ts` 裡的 `StreamRow`。
 3. 修改來源：`SOURCES`（`scripts/fetch.ts`）和 `TWEET_FEEDS` 裡的 feed key、`STREAM_CHANNEL_IDS`（`scripts/streams.ts`）裡的頻道 ID，以及 `scripts/lib/retention.ts` 裡的截止日期，它會忽略 2026 年 10 月 1 日以前發布的推文。
-4. 在你的 fork 打開 **Settings → Secrets and variables → Actions → New repository secret**，新增五個 secret：`SUPABASE_URL` 填你的專案 URL、`SUPABASE_SERVICE_KEY` 填 service-role key、`ANTHROPIC_API_KEY`、`YOUTUBE_API_KEY`，以及 `RSS_FEEDS`，內容是一個 JSON 物件，把 `scripts/fetch.ts` 用到的每個 feed key 對應到它的 rss.app feed id，例如 `{"kafu":"<id>"}`。想改用 Google Gemini 翻譯的話，再加一個 `GEMINI_API_KEY` secret，並在同一頁的 **Variables** 分頁新增 `TRANSLATE_PROVIDER` = `gemini`。
+4. 在你的 fork 打開 **Settings → Secrets and variables → Actions → New repository secret**，新增五個 secret：`SUPABASE_URL` 填你的專案 URL、`SUPABASE_SERVICE_KEY` 填 service-role key、`ANTHROPIC_API_KEY`、`YOUTUBE_API_KEY`，以及 `RSS_FEEDS`，內容是一個 JSON 物件，把 `scripts/fetch.ts` 用到的每個 feed key 對應到它的 rss.app feed id，例如 `{"rim":"<id>"}`。想改用 Google Gemini 翻譯的話，再加一個 `GEMINI_API_KEY` secret，並在同一頁的 **Variables** 分頁新增 `TRANSLATE_PROVIDER` = `gemini`。
 5. 打開 **Actions → Ingest → Run workflow**，看第一次執行的 log。
 6. 讓你的排程器每小時送出 `POST https://api.github.com/repos/<you>/kaf-posts-ingest/actions/workflows/ingest.yml/dispatches`，body 是 `{"ref":"main"}`，用一把只限這個 repo、權限開 **Actions: Read and write** 的 fine-grained token 授權。workflow 本身沒有內建排程。
 
